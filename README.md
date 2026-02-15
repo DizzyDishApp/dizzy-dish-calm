@@ -1,0 +1,351 @@
+# Dizzy Dish
+
+A recipe decision app for the parent at 6:30pm who just needs an answer.
+
+One button. One answer. No noise.
+
+---
+
+## What is Dizzy Dish?
+
+Dizzy Dish removes the daily "what's for dinner?" paralysis. You set your dietary preferences once, hit the **"decide for me"** spin button, and get a fully curated recipe — or an entire 7-day meal plan — in under two seconds.
+
+Results come with cook time, calories, dietary tags, and a one-tap path to ordering ingredients through Instacart.
+
+### Core Features
+
+- **Single Spin** — One tap to get a recipe that matches your filters
+- **Weekly Plan** — Toggle weekly mode for 7 meals with a shared grocery list that deduplicates ingredients (42 items down to 28)
+- **Dietary Filters** — 19 options including Vegetarian, Vegan, Gluten Free, Keto, Paleo, Pescatarian, allergen-specific (No Peanuts, No Shellfish, etc.)
+- **Save Collection** — Heart any result to build your personal recipe book
+- **Instacart Integration** — Connect your account to order ingredients directly from a result
+- **Haptic Feedback** — Every interaction has purpose-matched haptics (heavy for the spin, light for navigation, success buzz when a result lands)
+
+### Who it's for
+
+Parents. Busy people. Anyone who has decision fatigue about food. The entire UX is built around the idea that by 6:30pm you're exhausted and you need calm competence, not a wall of options.
+
+---
+
+## Design System — "Exhale" Concept
+
+The visual language is called **Exhale**. It's warm, organic, and deliberately minimal.
+
+### Palette
+
+| Token | Hex | Usage |
+|---|---|---|
+| Background | `#FAF6F1` | App background — warm off-white |
+| Card | `#FFFFFF` | Card surfaces |
+| Cream | `#F5EDE5` | Secondary surfaces, input backgrounds |
+| Warm | `#C65D3D` | Primary accent — terracotta |
+| Warm Light | `#E8BBA8` | Soft accent, avatar gradient |
+| Warm Pale | `#FDF0EB` | Secondary button backgrounds |
+| Green | `#5B8C6A` | Action color (order, success) |
+| Green Light | `#E4EFE7` | Green surface tint |
+| Instacart | `#108910` | Instacart brand green |
+| Text | `#2D2A26` | Primary text — near-black warm |
+| Text Soft | `#8C857D` | Secondary text |
+| Text Light | `#B8B2AA` | Tertiary text, placeholders |
+| Border | `#E8E3DD` | Dividers, input borders |
+
+### Typography
+
+- **Display:** Fraunces (serif) — warm and characterful. Used for headings, the spin button label, and section titles.
+- **Body:** Plus Jakarta Sans (sans-serif) — clean and modern. Used for everything else.
+
+Both are Google Fonts loaded at runtime via `expo-font`.
+
+### Animations
+
+All animations use React Native Reanimated v3 (UI thread, 60fps):
+
+| Name | Behavior | Where |
+|---|---|---|
+| calmPulse | Scale 1 to 1.03, 3s infinite loop | Spin button idle state |
+| gentleUp | Fade in + translate Y 20px to 0, staggered | Page content entrance |
+| slideUp | Translate Y 100% to 0, cubic-bezier | Result card entrance |
+| spinWheel | Rotate 0 to 1080deg, 0.7s | Spin sequence |
+| confFloat | Translate Y up 60px, scale down, fade out | Food emoji celebration |
+
+### Haptics
+
+| Intensity | Trigger |
+|---|---|
+| Heavy | Spin button press |
+| Success | Result appears |
+| Medium | Save/unsave heart |
+| Select | Toggle, filter pills |
+| Light | Navigation (back, gear, avatar) |
+
+### Design System Source
+
+The full design system spec is defined in an SVG file that documents every color, typography scale, spacing value, border radius, component variant, shadow level, animation, and haptic pattern. It lives alongside this repo as the source of truth for the visual language.
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+| Tool | Version | Notes |
+|---|---|---|
+| Node.js | 18+ | LTS recommended |
+| npm | 9+ | Comes with Node |
+| Expo CLI | Latest | Installed via npx (no global install needed) |
+| Xcode | 15+ | iOS Simulator — macOS only |
+| Android Studio | Latest | Android Emulator — any OS |
+| Expo Go | Latest | Physical device testing — [iOS](https://apps.apple.com/app/expo-go/id982107779) / [Android](https://play.google.com/store/apps/details?id=host.exp.exponent) |
+
+### Install and Run
+
+```bash
+# Clone the repo
+git clone <your-repo-url>
+cd DizzyDish
+
+# Install dependencies
+npm install
+
+# Start the Expo dev server
+npx expo start
+```
+
+Once the dev server is running, you'll see a QR code and menu in the terminal.
+
+### Running on iOS Simulator
+
+```bash
+# Option 1: Press 'i' in the Expo dev server terminal
+
+# Option 2: Direct launch
+npx expo start --ios
+
+# Option 3: If you need a specific simulator
+npx expo start --ios --device "iPhone 16 Pro"
+```
+
+Requires Xcode with at least one iOS Simulator installed. Open Xcode > Settings > Platforms to install simulator runtimes.
+
+### Running on Android Emulator
+
+```bash
+# Option 1: Press 'a' in the Expo dev server terminal
+
+# Option 2: Direct launch
+npx expo start --android
+```
+
+Requires Android Studio with an AVD (Android Virtual Device) configured and running. Start the emulator from Android Studio > Device Manager before running the command.
+
+### Running on a Physical Device
+
+1. Install the **Expo Go** app on your phone
+2. Start the dev server: `npx expo start`
+3. **iOS:** Scan the QR code with your phone camera
+4. **Android:** Scan the QR code from inside the Expo Go app
+
+Your computer and phone must be on the same WiFi network. If that's not possible, use tunnel mode:
+
+```bash
+npx expo start --tunnel
+```
+
+This routes through Expo's servers (slower, but works across networks). Requires `@expo/ngrok` — Expo will prompt you to install it.
+
+---
+
+## Expo Builds
+
+### Development Build
+
+A development build is a custom version of Expo Go that includes your native dependencies. Use this when you need native modules that Expo Go doesn't support, or when you want a closer-to-production dev experience.
+
+```bash
+# Install EAS CLI
+npm install -g eas-cli
+
+# Log in to your Expo account
+eas login
+
+# Configure your project for EAS Build (first time only)
+eas build:configure
+
+# Create a development build for iOS
+eas build --profile development --platform ios
+
+# Create a development build for Android
+eas build --profile development --platform android
+
+# Run the dev build on a simulator/emulator
+eas build --profile development-simulator --platform ios
+```
+
+After the build completes, install it on your device/simulator and connect it to your dev server:
+
+```bash
+npx expo start --dev-client
+```
+
+### Preview Build
+
+A preview build is an internal distribution build — like a beta. It's a real app binary you can share with testers via a link, but it's not on the App Store or Play Store.
+
+```bash
+# iOS preview (ad-hoc distribution — needs device UDIDs registered)
+eas build --profile preview --platform ios
+
+# Android preview (produces an APK or AAB you can sideload)
+eas build --profile preview --platform android
+```
+
+You'll need an `eas.json` file. Here's a starter:
+
+```json
+{
+  "cli": { "version": ">= 12.0.0" },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "development-simulator": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": { "simulator": true }
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {}
+  },
+  "submit": {
+    "production": {}
+  }
+}
+```
+
+### Production Build
+
+A production build is what goes to the App Store and Google Play.
+
+```bash
+# iOS production (requires Apple Developer account, $99/year)
+eas build --profile production --platform ios
+
+# Android production (requires Google Play Developer account, $25 one-time)
+eas build --profile production --platform android
+
+# Both at once
+eas build --profile production --platform all
+```
+
+### Submitting to Stores
+
+```bash
+# Submit to App Store (after production iOS build completes)
+eas submit --platform ios
+
+# Submit to Google Play (after production Android build completes)
+eas submit --platform android
+```
+
+You'll need to configure credentials:
+- **iOS:** Apple Developer account, App Store Connect API key or Apple ID login
+- **Android:** Google Play service account JSON key
+
+### OTA Updates
+
+Expo supports over-the-air updates for JS bundle changes (no native code changes). This lets you push bug fixes without going through the app stores.
+
+```bash
+# Push an update to all users on the production channel
+eas update --branch production --message "Fix recipe card layout"
+
+# Push to a specific channel (e.g., preview testers)
+eas update --branch preview --message "New weekly plan UI"
+```
+
+### Local Compilation (No EAS)
+
+If you need to build locally without Expo's cloud service:
+
+```bash
+# Generate native iOS project
+npx expo prebuild --platform ios
+
+# Build with Xcode
+cd ios && pod install && cd ..
+open ios/DizzyDish.xcworkspace
+# Build and run from Xcode
+
+# Generate native Android project
+npx expo prebuild --platform android
+
+# Build with Gradle
+cd android && ./gradlew assembleDebug
+```
+
+After prebuilding, the `ios/` and `android/` directories contain standard native projects. You can open them in Xcode and Android Studio respectively.
+
+### Clearing Caches
+
+When things go wrong:
+
+```bash
+# Clear Expo/Metro cache
+npx expo start --clear
+
+# Nuclear option: clear everything
+rm -rf node_modules
+rm -rf .expo
+npm install
+npx expo start --clear
+```
+
+---
+
+## Project Structure
+
+```
+app/                        Screens (Expo Router file-based routing)
+  _layout.tsx               Root layout — fonts, providers, nav config
+  index.tsx                 Home — spin button, weekly toggle
+  result.tsx                Single recipe result
+  weekly-result.tsx         7-day meal plan result
+  saved.tsx                 Saved recipes list
+  (modal)/                  Modal presentations
+    settings.tsx            Dietary/time/calorie preferences
+    account.tsx             Auth, Instacart, subscription
+    instacart.tsx           Instacart login
+
+components/                 Reusable UI components
+context/                    React Context modules (client state)
+providers/                  Provider composition
+hooks/                      React Query hooks (server state)
+lib/                        API fetchers, query config, helpers
+constants/                  Colors, typography tokens
+types/                      Shared TypeScript interfaces
+assets/                     Fonts, images
+```
+
+See `CLAUDE.md` for full architectural documentation, coding conventions, and guides for adding new features.
+
+---
+
+## Scripts
+
+| Command | What it does |
+|---|---|
+| `npm start` | Start Expo dev server |
+| `npm run ios` | Start and open on iOS Simulator |
+| `npm run android` | Start and open on Android Emulator |
+| `npm run web` | Start web version (limited support) |
+| `npm test` | Run Jest test suite |
+| `npm run lint` | Run ESLint |
+
+---
+
+## License
+
+Proprietary. All rights reserved.

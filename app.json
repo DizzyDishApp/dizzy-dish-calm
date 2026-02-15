@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "Dizzy Dish",
+    "slug": "dizzy-dish",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "dizzydish",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FAF6F1"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.dizzydish.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#FAF6F1"
+      },
+      "package": "com.dizzydish.app"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-haptics"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

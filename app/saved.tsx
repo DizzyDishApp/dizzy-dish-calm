@@ -1,0 +1,64 @@
+import React from "react";
+import { View, Text, ActivityIndicator, ScrollView } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { HeaderBar } from "@/components/HeaderBar";
+import { RecipeCard } from "@/components/RecipeCard";
+import { useSavedRecipes } from "@/hooks/useSavedRecipes";
+import { Colors } from "@/constants/colors";
+
+/**
+ * Saved recipes screen.
+ *
+ * Server state: useSavedRecipes query
+ * Handles loading, error, and empty states explicitly.
+ */
+export default function SavedScreen() {
+  const { data: recipes, isLoading, isError, error } = useSavedRecipes();
+
+  return (
+    <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
+      <HeaderBar title="Saved Recipes" showBack />
+
+      {isLoading ? (
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color={Colors.warm} />
+        </View>
+      ) : isError ? (
+        <View className="flex-1 items-center justify-center px-xl">
+          <Text className="font-body text-sm text-txt-soft text-center">
+            Something went wrong loading your recipes.{"\n"}
+            {error?.message}
+          </Text>
+        </View>
+      ) : !recipes || recipes.length === 0 ? (
+        <View className="flex-1 items-center justify-center px-xl">
+          <Text className="text-4xl mb-4">{"\u{2764\uFE0F}"}</Text>
+          <Text className="font-display text-lg text-txt text-center">
+            No saved recipes yet
+          </Text>
+          <Text className="font-body text-xs text-txt-soft text-center mt-2">
+            Tap the heart on any recipe to save it here.
+          </Text>
+        </View>
+      ) : (
+        <ScrollView
+          className="flex-1 px-xl"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 20 }}
+        >
+          {recipes.map((recipe, i) => (
+            <RecipeCard
+              key={recipe.id}
+              recipe={recipe}
+              index={i}
+              saved
+              onToggleSave={() => {
+                // MIGRATION NOTE: Wire up unsave mutation here
+              }}
+            />
+          ))}
+        </ScrollView>
+      )}
+    </SafeAreaView>
+  );
+}
