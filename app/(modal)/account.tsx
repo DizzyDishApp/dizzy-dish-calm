@@ -11,6 +11,7 @@ import { SecondaryButton } from "@/components/SecondaryButton";
 import { InputField } from "@/components/InputField";
 import { useAuth } from "@/context/AuthContext";
 import { useSubscription } from "@/hooks/useUserProfile";
+import { loginWithSocial } from "@/lib/api";
 import { Colors } from "@/constants/colors";
 
 /**
@@ -33,7 +34,6 @@ export default function AccountScreen() {
 
   const handleSocialLogin = async (provider: "google" | "facebook" | "apple") => {
     // MIGRATION NOTE: Integrate real social auth via expo-auth-session
-    const { loginWithSocial } = await import("@/lib/api");
     const result = await loginWithSocial(provider);
     await login(result.user, result.accessToken);
   };

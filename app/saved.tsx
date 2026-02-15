@@ -32,7 +32,7 @@ export default function SavedScreen() {
         </View>
       ) : !recipes || recipes.length === 0 ? (
         <View className="flex-1 items-center justify-center px-xl">
-          <Text className="text-4xl mb-4">{"\u{2764\uFE0F}"}</Text>
+          <Text className="text-4xl mb-4">{"\u2764\uFE0F"}</Text>
           <Text className="font-display text-lg text-txt text-center">
             No saved recipes yet
           </Text>

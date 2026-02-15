@@ -3,6 +3,10 @@ import { fetchSavedRecipes, saveRecipe, unsaveRecipe } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 import type { Recipe } from "@/types";
 
+interface OptimisticContext {
+  previous: Recipe[] | undefined;
+}
+
 /**
  * Query hook for fetching the user's saved recipes.
  */
@@ -20,7 +24,12 @@ export function useSavedRecipes() {
 export function useSaveRecipe() {
   const queryClient = useQueryClient();
 
-  return useMutation<void, Error, { recipeId: string; recipe: Recipe }>({
+  return useMutation<
+    void,
+    Error,
+    { recipeId: string; recipe: Recipe },
+    OptimisticContext
+  >({
     mutationFn: ({ recipeId }) => saveRecipe(recipeId),
     onMutate: async ({ recipe }) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.recipes.saved() });
@@ -34,11 +43,8 @@ export function useSaveRecipe() {
       return { previous };
     },
     onError: (_err, _vars, context) => {
-      if (context && "previous" in context) {
-        queryClient.setQueryData(
-          queryKeys.recipes.saved(),
-          (context as { previous: Recipe[] }).previous
-        );
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.recipes.saved(), context.previous);
       }
     },
     onSettled: () => {
@@ -53,7 +59,7 @@ export function useSaveRecipe() {
 export function useUnsaveRecipe() {
   const queryClient = useQueryClient();
 
-  return useMutation<void, Error, string>({
+  return useMutation<void, Error, string, OptimisticContext>({
     mutationFn: unsaveRecipe,
     onMutate: async (recipeId) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.recipes.saved() });
@@ -66,11 +72,8 @@ export function useUnsaveRecipe() {
       return { previous };
     },
     onError: (_err, _vars, context) => {
-      if (context && "previous" in context) {
-        queryClient.setQueryData(
-          queryKeys.recipes.saved(),
-          (context as { previous: Recipe[] }).previous
-        );
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.recipes.saved(), context.previous);
       }
     },
     onSettled: () => {
