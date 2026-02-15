@@ -13,8 +13,7 @@ import { useUI } from "@/context/UIContext";
 import { useSpinRecipe, useSpinWeeklyPlan } from "@/hooks/useSpinRecipe";
 import { SpinningOverlay } from "@/components/SpinningOverlay";
 
-// MIGRATION NOTE: Replace with actual logo asset
-// import logo from "@/assets/images/logo.webp";
+const logo = require("@/assets/images/logo.png");
 
 /**
  * Home screen — the main entry point.
@@ -83,8 +82,12 @@ export default function HomeScreen() {
       <View className="flex-1 px-xl">
         {/* Top bar */}
         <View className="flex-row justify-between items-center py-1">
-          {/* MIGRATION NOTE: Logo — replace Image source with actual asset */}
-          <Text className="font-display text-xl text-txt">Dizzy Dish</Text>
+          <Image
+            source={logo}
+            style={{ width: 120, height: 40 }}
+            contentFit="contain"
+            accessibilityLabel="Dizzy Dish logo"
+          />
           <GearButton onPress={() => router.push("/(modal)/settings")} />
         </View>
 
