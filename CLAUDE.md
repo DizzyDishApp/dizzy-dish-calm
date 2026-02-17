@@ -125,8 +125,23 @@ assets/
 store/
   index.ts                  ← Shared business logic (placeholder)
 
+__tests__/
+  test-utils.tsx            ← Test helpers: createTestQueryClient, renderWithQuery
+  AuthContextReducer.test.ts ← Unit tests for authReducer + mapSupabaseUser
+  api.checkEmailExists.test.ts ← Unit tests for checkEmailExists
+  PrimaryButton.test.tsx    ← Component tests for PrimaryButton
+  SocialButton.test.tsx     ← Component tests for SocialButton
+  InputField.test.tsx       ← Component tests for InputField
+  AuthContext.test.tsx      ← Integration tests for AuthProvider (renderHook)
+  AccountScreen.test.tsx    ← Integration tests for account screen (both auth states)
+
+.github/
+  workflows/
+    test.yml                ← CI: runs tests on push/PR
+
+jest.setup.js               ← Global test mocks (reanimated, haptics, supabase, etc.)
 tailwind.config.js          ← NativeWind theme: custom colors, fonts, spacing, radii
-babel.config.js             ← Babel: expo preset + nativewind + reanimated plugin
+babel.config.js             ← Babel: expo preset + nativewind + reanimated (NativeWind disabled in test env)
 metro.config.js             ← Metro bundler with NativeWind integration
 nativewind-env.d.ts         ← NativeWind TypeScript types reference
 tsconfig.json               ← TypeScript strict mode, path aliases
@@ -736,41 +751,84 @@ Configured via `scheme: "dizzydish"` in `app.json`. Routes map directly:
 npm test                    # Run all tests
 npm test -- --watch         # Watch mode
 npm test -- --coverage      # Coverage report
+npm run test:ci             # CI mode (--ci --runInBand --forceExit)
 ```
 
 ### Framework
 - `jest-expo` preset
 - `@testing-library/react-native` for component tests
+- `jest.setup.js` provides global mocks for all native/Expo modules
+
+### Infrastructure
+The test environment requires several key pieces:
+
+**`babel.config.js`** — NativeWind's JSX transform (`jsxImportSource: "nativewind"` + `nativewind/babel` preset) is conditionally disabled when `NODE_ENV === "test"`. Without this, the `react-native-css-interop` wrap-jsx runtime breaks all component rendering in tests.
+
+**`jest.setup.js`** — Global mocks for:
+- `react-native-reanimated` (via its built-in `setUpTests()`)
+- `react-native-css-interop` (maybeHijackSafeAreaProvider passthrough)
+- `react-native-safe-area-context` (SafeAreaView → View, insets → zeros)
+- `expo-haptics`, `expo-router`, `expo-web-browser`, `expo-linking`
+- `@expo/vector-icons` (Ionicons → Text element)
+- `@react-native-async-storage/async-storage` (built-in jest mock)
+- `@/lib/supabase` (full auth + DB mock with jest.fn() on all methods)
+- `@/lib/haptics` (all haptic helpers as jest.fn())
+
+**`__tests__/test-utils.tsx`** — Shared helpers:
+- `createTestQueryClient()` — QueryClient with retries disabled and gcTime 0
+- `renderWithQuery()` — Wraps UI in QueryClientProvider
 
 ### Conventions
-- Test files: `__tests__/ComponentName.test.tsx` or co-located `ComponentName.test.tsx`
+- Test files: `__tests__/ComponentName.test.tsx`
 - One test file per component/hook
+- Pure functions (reducers, helpers) exported for direct unit testing
+- Screen tests mock context hooks at the module level with `jest.mock()`
+- Use `mock` prefix for mutable variables referenced inside `jest.mock()` factories
+
+### Existing test coverage (50 tests)
+| File | What it tests | Tests |
+|---|---|---|
+| `AuthContextReducer.test.ts` | `authReducer`, `mapSupabaseUser` pure functions | 6 |
+| `api.checkEmailExists.test.ts` | `checkEmailExists` with supabase.rpc mock | 4 |
+| `PrimaryButton.test.tsx` | Rendering, loading state, press, a11y | 6 |
+| `SocialButton.test.tsx` | Provider labels, press, a11y | 5 |
+| `InputField.test.tsx` | Placeholder, input, props | 5 |
+| `AuthContext.test.tsx` | Provider mount, signUp/signIn/signInWithGoogle/signOut | 8 |
+| `AccountScreen.test.tsx` | Unauth/auth views, validation, phase transitions, errors | 16 |
+
+### Adding a new test
+
+1. Create `__tests__/MyThing.test.tsx`
+2. Import from `__tests__/test-utils` for React Query wrappers if needed
+3. Mock context hooks at module level if testing a screen:
+```tsx
+const mockMyHook = jest.fn();
+jest.mock("@/context/MyContext", () => ({
+  useMyContext: () => mockMyHook(),
+}));
+```
+4. For pure functions, import and test directly — no mocks needed
+5. Run `npm test -- --testPathPattern=MyThing` to run just your file
 
 ### Mocking React Query
 ```tsx
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { renderWithQuery } from "@/__tests__/test-utils";
 
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: false } },
-});
-
-function wrapper({ children }) {
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
-}
-
-// renderHook(useMyHook, { wrapper });
+const { getByText } = renderWithQuery(<MyComponent />);
 ```
 
-### Mocking Context
+### Mocking Context (for screen tests)
+Mock at the module level instead of wrapping in providers — this gives you fine-grained control over the mock state without needing to render the real provider tree:
 ```tsx
-function renderWithProviders(ui: React.ReactElement) {
-  return render(
-    <AuthProvider>
-      <PreferencesProvider>{ui}</PreferencesProvider>
-    </AuthProvider>
-  );
-}
+let mockState = { isAuthenticated: false };
+
+jest.mock("@/context/AuthContext", () => ({
+  useAuth: () => ({ state: mockState, signIn: jest.fn() }),
+}));
 ```
+
+### CI
+GitHub Actions runs `npm run test:ci` on every push to `main`/`feat/**`/`fix/**` and on PRs to `main`. The workflow is at `.github/workflows/test.yml`.
 
 ---
 
@@ -802,14 +860,32 @@ function renderWithProviders(ui: React.ReactElement) {
 
 13. **KeyboardAvoidingView in modals** — `KeyboardAvoidingView` doesn't work reliably in Expo Go modals. Instead, use `Keyboard` event listeners to track keyboard height, dynamically pad the ScrollView content, and `measureInWindow` + `scrollTo` to keep the focused input visible. See `account.tsx` for the pattern.
 
+14. **NativeWind breaks Jest tests** — The `jsxImportSource: "nativewind"` babel config wraps every JSX element in `react-native-css-interop`'s wrap-jsx runtime, which calls `maybeHijackSafeAreaProvider`. This crashes all component tests. The fix is in `babel.config.js`: conditionally disable NativeWind presets when `process.env.NODE_ENV === "test"`. The `className` prop becomes a no-op in tests (styles aren't applied), but rendering and interaction testing works correctly.
+
+15. **`jest.mock()` variable scoping** — Variables referenced inside `jest.mock()` factory functions must either be prefixed with `mock` (e.g., `mockCurrentAuthState`) or use `require()` inside the factory. This is a babel-jest restriction to prevent uninitialized variable access.
+
 ---
 
 ## 17. Contributing
 
 ### Branch naming
-- `feature/short-description`
-- `fix/short-description`
-- `refactor/short-description`
+Branch names are enforced by CI. Pattern: `<type>/<kebab-case-description>`
+
+| Prefix | Purpose |
+|---|---|
+| `feat/` | New feature |
+| `fix/` | Bug fix |
+| `refactor/` | Code refactoring (no behavior change) |
+| `chore/` | Build, deps, config changes |
+| `docs/` | Documentation only |
+| `test/` | Adding or updating tests |
+| `style/` | Formatting, whitespace (no logic change) |
+| `hotfix/` | Urgent production fix |
+| `release/` | Release preparation |
+
+Rules:
+- Description must be lowercase, kebab-case (`a-z`, `0-9`, hyphens)
+- Examples: `feat/add-weekly-meal-plan`, `fix/auth-redirect-loop`, `chore/bump-expo-sdk-55`
 
 ### Commit message format
 ```

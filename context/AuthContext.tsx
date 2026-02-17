@@ -30,7 +30,7 @@ type AuthAction =
 
 // ── Reducer ──
 
-function authReducer(state: AuthState, action: AuthAction): AuthState {
+export function authReducer(state: AuthState, action: AuthAction): AuthState {
   switch (action.type) {
     case "SET_SESSION":
       return {
@@ -57,7 +57,7 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
 
 // ── Helpers ──
 
-function mapSupabaseUser(session: Session): User {
+export function mapSupabaseUser(session: Session): User {
   const su = session.user;
   return {
     id: su.id,
