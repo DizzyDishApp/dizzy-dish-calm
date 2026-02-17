@@ -1,8 +1,9 @@
-import React from "react";
-import { View, Text, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { View, Text, ScrollView, Platform, Pressable, TextInput, Keyboard, Dimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
+import { Ionicons } from "@expo/vector-icons";
 import { HeaderBar } from "@/components/HeaderBar";
 import { Avatar } from "@/components/Avatar";
 import { SocialButton } from "@/components/SocialButton";
@@ -10,50 +11,227 @@ import { PrimaryButton } from "@/components/PrimaryButton";
 import { SecondaryButton } from "@/components/SecondaryButton";
 import { InputField } from "@/components/InputField";
 import { useAuth } from "@/context/AuthContext";
+import { useAuthRedirect } from "@/context/AuthRedirectContext";
+import { useUI } from "@/context/UIContext";
 import { useSubscription } from "@/hooks/useUserProfile";
-import { loginWithSocial } from "@/lib/api";
+import { useSaveRecipe } from "@/hooks/useSavedRecipes";
+import { checkEmailExists } from "@/lib/api";
 import { Colors } from "@/constants/colors";
 
 /**
  * Account screen (modal).
  *
- * Handles:
- *  - Social auth buttons (Google, Facebook, Apple)
- *  - Email auth
- *  - Instacart connection
- *  - Subscription management
- *  - Logout
+ * Identifier-first auth flow:
+ *   1. User enters email → taps GET STARTED
+ *   2. We check Supabase for existing account
+ *   3. Existing user → single password field + "Welcome Back"
+ *   4. New user → password + confirm password + "Create Account"
  *
  * Server state: useSubscription query
  * Client state: AuthContext
  */
+
+type AuthPhase = "email" | "password";
+
+/** Map Supabase error messages to user-friendly text. */
+function friendlyError(msg: string): string {
+  const lower = msg.toLowerCase();
+  if (lower.includes("invalid login credentials")) {
+    return "Incorrect password. Please try again.";
+  }
+  if (lower.includes("user already registered")) {
+    return "An account with this email already exists. Try signing in.";
+  }
+  if (lower.includes("email rate limit")) {
+    return "Too many attempts. Please wait a moment and try again.";
+  }
+  if (lower.includes("network") || lower.includes("fetch")) {
+    return "Network error. Please check your connection and try again.";
+  }
+  if (lower.includes("weak password") || lower.includes("at least")) {
+    return "Password is too weak. Use at least 6 characters.";
+  }
+  return msg;
+}
+
 export default function AccountScreen() {
   const router = useRouter();
-  const { state: auth, login, logout } = useAuth();
+  const { state: auth, signUp, signIn, signInWithGoogle, signOut } = useAuth();
+  const { consumeSnapshot } = useAuthRedirect();
+  const { showToast } = useUI();
   const { data: subscription } = useSubscription();
+  const saveMutation = useSaveRecipe();
 
-  const handleSocialLogin = async (provider: "google" | "facebook" | "apple") => {
-    // MIGRATION NOTE: Integrate real social auth via expo-auth-session
-    const result = await loginWithSocial(provider);
-    await login(result.user, result.accessToken);
+  // Track the auth state at mount time so we only redirect on fresh sign-ins
+  const wasAuthenticatedOnMount = useRef(auth.isAuthenticated);
+
+  // ── Post-auth redirect ──
+  useEffect(() => {
+    if (!auth.isAuthenticated || wasAuthenticatedOnMount.current) return;
+
+    (async () => {
+      const snapshot = await consumeSnapshot();
+      if (!snapshot) return;
+
+      // Execute pending action
+      if (snapshot.pendingAction?.type === "save_recipe") {
+        const { recipeId, recipe } = snapshot.pendingAction.payload;
+        saveMutation.mutate({ recipeId, recipe });
+        showToast("Recipe saved!");
+      }
+
+      // Navigate back to previous route
+      if (snapshot.previousRoute) {
+        setTimeout(() => router.back(), 100);
+      }
+    })();
+  }, [auth.isAuthenticated]);
+
+  // ── Identifier-first state ──
+  const [phase, setPhase] = useState<AuthPhase>("email");
+  const [emailExists, setEmailExists] = useState<boolean | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [checkingEmail, setCheckingEmail] = useState(false);
+
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
+  const confirmRef = useRef<TextInput>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const keyboardHeight = useRef(0);
+  const [keyboardPadding, setKeyboardPadding] = useState(0);
+
+  const isBusy = loading || checkingEmail;
+
+  // Track keyboard height for padding and scroll calculations
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      keyboardHeight.current = e.endCoordinates.height;
+      setKeyboardPadding(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      keyboardHeight.current = 0;
+      setKeyboardPadding(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  // Scroll to a focused input only if it's behind the keyboard
+  const scrollOffsetRef = useRef(0);
+
+  const scrollToVisible = useCallback((inputRef: React.RefObject<TextInput | null>) => {
+    setTimeout(() => {
+      const node = inputRef.current;
+      if (!node || !scrollRef.current) return;
+
+      node.measureInWindow((_x, y, _w, h) => {
+        const screenH = Dimensions.get("window").height;
+        const kbTop = screenH - keyboardHeight.current;
+        const inputBottom = y + h + 20; // 20px breathing room
+
+        if (inputBottom > kbTop) {
+          const scrollBy = inputBottom - kbTop;
+          scrollRef.current?.scrollTo({
+            y: scrollOffsetRef.current + scrollBy,
+            animated: true,
+          });
+        }
+      });
+    }, 350);
+  }, []);
+
+  // ── Phase 1: Check email ──
+  const handleGetStarted = async () => {
+    if (isBusy) return;
+
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setError("Please enter your email address.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
+    setError(null);
+    setCheckingEmail(true);
+
+    try {
+      const exists = await checkEmailExists(trimmed);
+      setEmailExists(exists);
+      setPhase("password");
+      setTimeout(() => passwordRef.current?.focus(), 300);
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setCheckingEmail(false);
+    }
   };
 
-  const handleLogout = async () => {
-    await logout();
+  // ── Phase 2: Submit auth ──
+  const handleSubmitAuth = async () => {
+    if (isBusy) return;
+
+    if (!password) {
+      setError("Please enter a password.");
+      return;
+    }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+    if (!emailExists && password !== confirmPassword) {
+      setError("Passwords don't match.");
+      return;
+    }
+
+    setError(null);
+    setLoading(true);
+
+    const result = emailExists
+      ? await signIn(email.trim(), password)
+      : await signUp(email.trim(), password);
+
+    setLoading(false);
+
+    if (result.error) {
+      setError(friendlyError(result.error));
+    }
   };
 
-  return (
-    <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
-      <HeaderBar title="Account" showBack />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
-      >
+  // ── Go back to email phase ──
+  const handleChangeEmail = () => {
+    setPhase("email");
+    setEmailExists(null);
+    setPassword("");
+    setConfirmPassword("");
+    setError(null);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
+  // ── Authenticated view ──
+  if (auth.isAuthenticated) {
+    return (
+      <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
+        <HeaderBar title="Account" showBack />
         <ScrollView
           className="flex-1 px-xl"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 40 }}
-          keyboardShouldPersistTaps="handled"
         >
           {/* Avatar area */}
           <Animated.View
@@ -61,62 +239,18 @@ export default function AccountScreen() {
             className="items-center py-5 pb-7"
           >
             <Avatar size="large" />
-            <Text className="font-body-medium text-[11px] text-warm mt-2">
-              edit photo
+            <Text className="font-body-medium text-sm text-txt mt-2">
+              {auth.user?.displayName}
             </Text>
-          </Animated.View>
-
-          {/* Login section */}
-          <Animated.View
-            entering={FadeInDown.delay(200).duration(300).springify()}
-          >
-            <Text className="font-display text-lg text-txt text-center mb-3.5">
-              Connect With
-            </Text>
-
-            <SocialButton provider="google" onPress={() => handleSocialLogin("google")} />
-            <SocialButton provider="facebook" onPress={() => handleSocialLogin("facebook")} />
-            <SocialButton provider="apple" onPress={() => handleSocialLogin("apple")} />
-
-            {/* Divider */}
-            <View className="flex-row items-center gap-2.5 my-4">
-              <View className="flex-1 h-px bg-border" />
-              <Text className="font-body-bold text-[11px] text-txt-light tracking-widest uppercase">
-                or continue with
-              </Text>
-              <View className="flex-1 h-px bg-border" />
-            </View>
-
-            {/* Email */}
-            <Text className="font-body-semibold text-xs text-txt mb-1.5">
-              Email Address
-            </Text>
-            <InputField
-              placeholder="you@email.com"
-              keyboardType="email-address"
-              className="mb-3"
-            />
-            <PrimaryButton
-              label="GET STARTED"
-              variant="warm"
-              bordered
-              onPress={() => {
-                // MIGRATION NOTE: Wire up email auth
-              }}
-            />
-
-            {/* Terms */}
-            <Text className="font-body text-[9px] text-txt-light leading-relaxed mt-3.5 text-center">
-              By continuing, you agree to the{" "}
-              <Text className="underline">Terms of Service</Text> and acknowledge
-              our <Text className="underline">Privacy Policy</Text>.
+            <Text className="font-body text-xs text-txt-soft mt-0.5">
+              {auth.user?.email}
             </Text>
           </Animated.View>
 
           {/* Instacart */}
           <Animated.View
-            entering={FadeInDown.delay(300).duration(300).springify()}
-            className="border-t border-border pt-5 mt-6"
+            entering={FadeInDown.delay(200).duration(300).springify()}
+            className="border-t border-border pt-5 mt-2"
           >
             <Text className="font-body-bold text-[11px] text-txt-light tracking-widest uppercase mb-2">
               Grocery Delivery
@@ -133,7 +267,7 @@ export default function AccountScreen() {
 
           {/* Subscription */}
           <Animated.View
-            entering={FadeInDown.delay(400).duration(300).springify()}
+            entering={FadeInDown.delay(300).duration(300).springify()}
             className="border-t border-border pt-5 mt-6"
           >
             <Text className="font-body-bold text-[11px] text-txt-light tracking-widest uppercase mb-3">
@@ -142,10 +276,10 @@ export default function AccountScreen() {
             <View className="flex-row justify-between items-center p-4 rounded-card bg-card border-[1.5px] border-border">
               <View>
                 <Text className="font-body-semibold text-[13px] text-txt">
-                  {subscription?.name ?? "Pro Plan"}
+                  {subscription?.name ?? "Free Plan"}
                 </Text>
                 <Text className="font-body text-[11px] text-txt-light mt-0.5">
-                  {subscription?.price ?? "$3/month"}
+                  {subscription?.price ?? "$0/month"}
                 </Text>
               </View>
               <SecondaryButton
@@ -158,19 +292,285 @@ export default function AccountScreen() {
             </View>
           </Animated.View>
 
-          {/* Log Out */}
+          {/* Sign Out */}
+          <Animated.View
+            entering={FadeInDown.delay(400).duration(300).springify()}
+            className="border-t border-border pt-5 mt-6"
+          >
+            <SecondaryButton
+              label="Sign Out"
+              variant="ghost"
+              onPress={handleSignOut}
+            />
+          </Animated.View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // ── Unauthenticated view ──
+  return (
+    <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
+      <HeaderBar title="Account" showBack />
+        <ScrollView
+          ref={scrollRef}
+          className="flex-1 px-xl"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 40 + keyboardPadding }}
+          keyboardShouldPersistTaps="handled"
+          onScroll={(e) => { scrollOffsetRef.current = e.nativeEvent.contentOffset.y; }}
+          scrollEventThrottle={16}
+        >
+          {/* Avatar area */}
+          <Animated.View
+            entering={FadeInDown.delay(100).duration(300).springify()}
+            className="items-center py-5 pb-7"
+          >
+            <Avatar size="large" />
+          </Animated.View>
+
+          {/* Social auth */}
+          <Animated.View
+            entering={FadeInDown.delay(200).duration(300).springify()}
+          >
+            <Text className="font-display text-lg text-txt text-center mb-3.5">
+              Connect With
+            </Text>
+
+            <SocialButton
+              provider="google"
+              onPress={async () => {
+                const { error: googleError } = await signInWithGoogle();
+                if (googleError) setError(googleError);
+              }}
+            />
+            <SocialButton
+              provider="facebook"
+              onPress={() => console.log("Facebook OAuth — not yet implemented")}
+            />
+            <SocialButton
+              provider="apple"
+              onPress={() => console.log("Apple OAuth — not yet implemented")}
+            />
+
+            {/* Divider */}
+            <View className="flex-row items-center gap-2.5 my-4">
+              <View className="flex-1 h-px bg-border" />
+              <Text className="font-body-bold text-[11px] text-txt-light tracking-widest uppercase">
+                or continue with
+              </Text>
+              <View className="flex-1 h-px bg-border" />
+            </View>
+          </Animated.View>
+
+          {/* Identifier-first email flow */}
+          <Animated.View
+            entering={FadeInDown.delay(300).duration(300).springify()}
+          >
+            {/* Phase header */}
+            {phase === "password" && (
+              <Animated.View entering={FadeIn.duration(250)}>
+                <Text className="font-display text-lg text-txt text-center mb-1">
+                  {emailExists ? "Welcome Back" : "Create Account"}
+                </Text>
+                <Text
+                  className="font-body text-xs text-warm text-center mb-3"
+                  onPress={handleChangeEmail}
+                  accessibilityRole="button"
+                  accessibilityLabel="Change email address"
+                >
+                  {email} — change
+                </Text>
+              </Animated.View>
+            )}
+
+            {/* Email field (phase 1) */}
+            {phase === "email" && (
+              <>
+                <Text className="font-body-semibold text-xs text-txt mb-1.5">
+                  Email Address
+                </Text>
+                <InputField
+                  ref={emailRef}
+                  placeholder="you@email.com"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  value={email}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    setError(null);
+                  }}
+                  onFocus={() => scrollToVisible(emailRef)}
+                  onSubmitEditing={handleGetStarted}
+                  returnKeyType="go"
+                  editable={!isBusy}
+                  className="mb-1"
+                />
+              </>
+            )}
+
+            {/* Password fields (phase 2) */}
+            {phase === "password" && (
+              <Animated.View entering={FadeIn.duration(250)}>
+                <Text className="font-body-semibold text-xs text-txt mb-1.5">
+                  Password
+                </Text>
+                <InputField
+                  ref={passwordRef}
+                  placeholder={emailExists ? "Enter your password" : "At least 6 characters"}
+                  secureTextEntry
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    setError(null);
+                  }}
+                  onFocus={() => scrollToVisible(passwordRef)}
+                  onSubmitEditing={emailExists ? handleSubmitAuth : undefined}
+                  returnKeyType={emailExists ? "go" : "next"}
+                  editable={!isBusy}
+                  className="mb-1"
+                />
+
+                {/* Forgot password (existing users only) */}
+                {emailExists && (
+                  <Text
+                    className="font-body text-xs text-warm text-right mb-2"
+                    onPress={() => {
+                      // MIGRATION NOTE: Wire up password reset via supabase.auth.resetPasswordForEmail
+                      console.log("Forgot password — not yet implemented");
+                    }}
+                    accessibilityRole="link"
+                  >
+                    Forgot password?
+                  </Text>
+                )}
+
+                {/* Confirm password (new users only) */}
+                {!emailExists && (
+                  <>
+                    <View className="h-2" />
+                    <Text className="font-body-semibold text-xs text-txt mb-1.5">
+                      Confirm Password
+                    </Text>
+                    <InputField
+                      ref={confirmRef}
+                      placeholder="Re-enter your password"
+                      secureTextEntry
+                      value={confirmPassword}
+                      onChangeText={(text) => {
+                        setConfirmPassword(text);
+                        setError(null);
+                      }}
+                      onFocus={() => scrollToVisible(confirmRef)}
+                      onSubmitEditing={handleSubmitAuth}
+                      returnKeyType="go"
+                      editable={!isBusy}
+                      className="mb-1"
+                    />
+                  </>
+                )}
+              </Animated.View>
+            )}
+
+            {/* Error message */}
+            {error && (
+              <Text className="font-body text-xs text-red-500 mt-2 mb-1">
+                {error}
+              </Text>
+            )}
+
+            {/* CTA button */}
+            <View className="mt-3">
+              {phase === "email" ? (
+                <PrimaryButton
+                  label="GET STARTED"
+                  variant="warm"
+                  bordered
+                  loading={checkingEmail}
+                  onPress={handleGetStarted}
+                />
+              ) : (
+                <PrimaryButton
+                  label={emailExists ? "SIGN IN" : "SIGN UP"}
+                  variant="warm"
+                  bordered
+                  loading={loading}
+                  onPress={handleSubmitAuth}
+                />
+              )}
+            </View>
+
+            {/* Terms */}
+            <Text className="font-body text-[9px] text-txt-light leading-relaxed mt-3.5 text-center">
+              By continuing, you agree to the{" "}
+              <Text className="underline">Terms of Service</Text> and acknowledge
+              our <Text className="underline">Privacy Policy</Text>.
+            </Text>
+          </Animated.View>
+
+          {/* Instacart — locked */}
+          <Animated.View
+            entering={FadeInDown.delay(400).duration(300).springify()}
+            className="border-t border-border pt-5 mt-6"
+          >
+            <Pressable
+              onPress={() => showToast("Create an account to connect Instacart")}
+              style={{ opacity: 0.45 }}
+              accessibilityRole="button"
+              accessibilityLabel="Connect Instacart — sign in required"
+            >
+              <Text className="font-body-bold text-[11px] text-txt-light tracking-widest uppercase mb-2">
+                Grocery Delivery
+              </Text>
+              <Text className="font-body text-xs text-txt-soft leading-relaxed mb-3">
+                Connect Instacart to order ingredients directly from your results.
+              </Text>
+              <View className="py-3.5 rounded-btn items-center justify-center bg-instacart border-2 border-txt flex-row gap-2">
+                <Ionicons name="lock-closed" size={14} color="white" />
+                <Text className="font-body-bold text-sm text-white uppercase tracking-wider">
+                  Connect Instacart
+                </Text>
+              </View>
+              <Text className="font-body text-[10px] text-txt-light text-center mt-2">
+                Sign in to connect
+              </Text>
+            </Pressable>
+          </Animated.View>
+
+          {/* Subscription — locked */}
           <Animated.View
             entering={FadeInDown.delay(500).duration(300).springify()}
             className="border-t border-border pt-5 mt-6"
           >
-            <SecondaryButton
-              label="Log Out"
-              variant="ghost"
-              onPress={handleLogout}
-            />
+            <Pressable
+              onPress={() => showToast("Create an account to access premium features")}
+              style={{ opacity: 0.45 }}
+              accessibilityRole="button"
+              accessibilityLabel="Subscription — sign in required"
+            >
+              <Text className="font-body-bold text-[11px] text-txt-light tracking-widest uppercase mb-3">
+                Subscription
+              </Text>
+              <View className="p-4 rounded-card bg-card border-[1.5px] border-border">
+                <Text className="font-body-semibold text-[13px] text-txt">
+                  Premium Features
+                </Text>
+                <Text className="font-body text-[11px] text-txt-soft leading-relaxed mt-1.5">
+                  Unlock unlimited spins, weekly meal plans, and advanced dietary filters.
+                </Text>
+                <View className="flex-row items-center justify-center mt-3 py-2.5 rounded-btn bg-warm gap-2">
+                  <Ionicons name="lock-closed" size={13} color="white" />
+                  <Text className="font-body-bold text-[13px] text-white uppercase tracking-wider">
+                    Unlock Pro
+                  </Text>
+                </View>
+              </View>
+              <Text className="font-body text-[10px] text-txt-light text-center mt-2">
+                Sign in to unlock
+              </Text>
+            </Pressable>
           </Animated.View>
         </ScrollView>
-      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

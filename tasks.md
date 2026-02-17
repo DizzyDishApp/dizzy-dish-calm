@@ -14,23 +14,30 @@
 
 ### Backend / API
 
-- [ ] Stand up real API server (replace mock endpoints in `lib/api.ts`)
+- [x] Set up Supabase project and database (profiles + saved_recipes tables with RLS)
+- [x] Wire saved recipes CRUD to Supabase `saved_recipes` table
+- [x] Wire user profile reads to Supabase `profiles` table
 - [ ] Implement `POST /spin` — single-recipe generation with preference params
 - [ ] Implement `POST /spin/weekly` — 7-day meal-plan generation
-- [ ] Implement `GET /recipes/saved`, `POST /recipes/save`, `DELETE /recipes/unsave`
-- [ ] Implement `GET /user/profile` and `PUT /user/profile`
-- [ ] Implement `GET /user/subscription`
+- [ ] Implement `PUT /user/profile` — profile updates
+- [ ] Implement `GET /user/subscription` — real subscription status
 - [ ] Add proper error responses and retry/back-off in the client
 
 ### Authentication
 
-- [ ] Integrate real auth provider (Supabase Auth, Firebase Auth, or Auth0)
-- [ ] Wire up email/password sign-up and login (currently commented out)
+- [x] Integrate Supabase Auth (`@supabase/supabase-js` + `react-native-url-polyfill`)
+- [x] Create Supabase client with AsyncStorage session persistence (`lib/supabase.ts`)
+- [x] Rewrite AuthContext to use Supabase `onAuthStateChange` listener
+- [x] Wire up email/password sign-up and sign-in on account screen
+- [x] Auto-create profile row on sign-up via database trigger
 - [ ] Wire up Apple Sign-In
-- [ ] Wire up Google Sign-In
+- [ ] 🔄 Wire up Google Sign-In — code wired, needs dev build to test (Expo Go can't handle redirect)
 - [ ] Wire up Facebook Login
-- [ ] Store and refresh real JWT tokens (replace mock `loginWithSocial()`)
-- [ ] Add auth-gated screens and redirect unauthenticated users
+- [x] Auth UI — OAuth buttons (visual only, Google/Facebook/Apple)
+- [x] Auth UI — Identifier-first flow (email → detect existing/new → password)
+- [x] Auth UI — Locked Instacart & Subscription sections for unauthenticated users
+- [x] Auth UI — Post-auth redirect with pending action replay (AuthRedirectContext)
+- [x] Auth UI — Polish: friendly errors, loading states, double-tap prevention, AsyncStorage persistence
 
 ### Payments & Subscriptions
 
@@ -54,17 +61,27 @@
 ### Testing
 
 - [x] Jest + `jest-expo` configured in `package.json`
+- [x] Test infrastructure: `jest.setup.js` with global mocks (reanimated, haptics, AsyncStorage, expo-router, supabase, safe-area-context, vector-icons, NativeWind/css-interop)
+- [x] Test utilities: `__tests__/test-utils.tsx` (`createTestQueryClient`, `renderWithQuery`)
+- [x] `babel.config.js` conditionally disables NativeWind transform in test env
+- [x] Unit tests: `authReducer` + `mapSupabaseUser` (6 tests)
+- [x] Unit tests: `checkEmailExists` API helper (4 tests)
+- [x] Component tests: `PrimaryButton` — rendering, loading state, press, a11y (6 tests)
+- [x] Component tests: `SocialButton` — providers, press, a11y (5 tests)
+- [x] Component tests: `InputField` — rendering, input, props (5 tests)
+- [x] Integration tests: `AuthContext` provider — mount, signUp, signIn, signInWithGoogle, signOut (8 tests)
+- [x] Integration tests: `AccountScreen` — unauth/auth views, validation, phase transitions, error mapping (16 tests)
 - [ ] Write unit tests for utility functions (`lib/haptics.ts`, `lib/asyncStorage.ts`)
 - [ ] Write unit tests for React Query hooks (`hooks/`)
-- [ ] Write component tests for core UI (`SpinButton`, `RecipeCard`, `FilterPill`)
-- [ ] Write integration tests for auth flow
+- [ ] Write component tests for more UI (`SpinButton`, `RecipeCard`, `FilterPill`)
 - [ ] Write integration tests for spin → result → save flow
 - [ ] Add snapshot tests for design-system components
 
 ### CI / CD
 
+- [x] GitHub Actions workflow: `npm run test:ci` on push/PR (`.github/workflows/test.yml`)
 - [ ] Create `eas.json` with development, preview, and production profiles
-- [ ] Set up GitHub Actions workflow: lint → typecheck → test
+- [ ] Expand workflow: lint → typecheck → test
 - [ ] Add EAS Build step (preview on PR, production on merge to `main`)
 - [ ] Add EAS Submit step for App Store and Google Play
 - [ ] Configure OTA updates via `expo-updates`
@@ -148,15 +165,27 @@
 ## Already Complete
 
 - [x] Design system ("Exhale") — colors, typography, Tailwind tokens
-- [x] 19 reusable UI components (`components/`)
-- [x] Animation system (Reanimated v3, 5 patterns, 60 fps)
+- [x] 20 reusable UI components (`components/`)
+- [x] Animation system (Reanimated v3, 6 patterns, 60 fps)
 - [x] Haptic feedback system (`lib/haptics.ts`)
 - [x] Settings / preferences screen with 19 dietary filters, time & calorie filters
 - [x] Preferences persistence via AsyncStorage
 - [x] React Query + React Context state management architecture
 - [x] App icon, adaptive icon, splash screen, and favicon
-- [x] `.env` and `.env.example` with feature-flag placeholders
+- [x] `.env` and `.env.example` with Supabase + feature-flag vars
 - [x] Expo Router navigation (tabs, modals, stack)
 - [x] Light/dark theme support via ThemeContext
 - [x] Toast notification component
 - [x] CLAUDE.md and README.md documentation
+- [x] Supabase Auth — email sign-up/sign-in with session persistence
+- [x] Supabase DB — `profiles` and `saved_recipes` tables with RLS
+- [x] AuthContext rewritten to use Supabase `onAuthStateChange`
+- [x] Account screen with identifier-first auth, friendly errors, loading states, post-auth redirect
+- [x] AuthRedirectContext with AsyncStorage persistence for post-auth navigation + pending actions
+- [x] Result screen heart-save redirects unauthenticated users to auth with pending save action
+- [x] LoadingDots component — animated bouncing dots for button loading states
+- [x] PrimaryButton `loading` prop — swaps label for LoadingDots, disables press
+- [x] Account screen keyboard-aware scroll — auto-scrolls to obscured inputs on focus
+- [x] Google OAuth — `signInWithGoogle()` in AuthContext via Supabase OAuth + expo-web-browser, Google button wired on account screen. Supabase + Google Cloud Console configured. Blocked on Expo Go redirect handling; needs dev build (`npx expo run:android`/`run:ios`) to test end-to-end.
+- [x] Test infrastructure — `jest.setup.js`, `__tests__/test-utils.tsx`, NativeWind babel disabled in test env, 50 tests across 7 suites (auth reducer, API helpers, PrimaryButton, SocialButton, InputField, AuthContext provider, AccountScreen)
+- [x] CI/CD — GitHub Actions workflow (`.github/workflows/test.yml`) runs `npm run test:ci` on push to main/feat/fix branches and PRs to main

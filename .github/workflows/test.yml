@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "feat/**", "fix/**", "refactor/**", "chore/**", "docs/**", "test/**", "style/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  branch-naming:
+    name: Branch naming
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Check branch name convention
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          PATTERN="^(feat|fix|refactor|chore|docs|test|style|hotfix|release)\/[a-z0-9][a-z0-9\-]*$"
+
+          if [[ ! "$BRANCH" =~ $PATTERN ]]; then
+            echo "::error::Branch name '$BRANCH' does not match the required pattern."
+            echo ""
+            echo "Branch names must follow: <type>/<short-description>"
+            echo ""
+            echo "Allowed types:"
+            echo "  feat/       New feature"
+            echo "  fix/        Bug fix"
+            echo "  refactor/   Code refactoring (no behavior change)"
+            echo "  chore/      Build, deps, config changes"
+            echo "  docs/       Documentation only"
+            echo "  test/       Adding or updating tests"
+            echo "  style/      Formatting, whitespace (no logic change)"
+            echo "  hotfix/     Urgent production fix"
+            echo "  release/    Release preparation"
+            echo ""
+            echo "Description rules:"
+            echo "  - Lowercase letters, numbers, and hyphens only"
+            echo "  - Must start with a letter or number"
+            echo "  - Use hyphens to separate words (kebab-case)"
+            echo ""
+            echo "Examples:"
+            echo "  feat/add-weekly-meal-plan"
+            echo "  fix/auth-redirect-loop"
+            echo "  refactor/split-preferences-context"
+            echo "  chore/bump-expo-sdk-55"
+            exit 1
+          fi
+
+          echo "✓ Branch name '$BRANCH' is valid."
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+
+    env:
+      EXPO_PUBLIC_SUPABASE_URL: https://test.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+
+      - run: npm ci --legacy-peer-deps
+
+      - run: npm run test:ci

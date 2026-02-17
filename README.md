@@ -327,6 +327,8 @@ lib/                        API fetchers, query config, helpers
 constants/                  Colors, typography tokens
 types/                      Shared TypeScript interfaces
 assets/                     Fonts, images
+__tests__/                  Test files (Jest + React Testing Library)
+.github/workflows/          CI workflows (GitHub Actions)
 ```
 
 See `CLAUDE.md` for full architectural documentation, coding conventions, and guides for adding new features.
@@ -342,7 +344,118 @@ See `CLAUDE.md` for full architectural documentation, coding conventions, and gu
 | `npm run android` | Start and open on Android Emulator |
 | `npm run web` | Start web version (limited support) |
 | `npm test` | Run Jest test suite |
+| `npm test -- --watch` | Run tests in watch mode |
+| `npm test -- --coverage` | Run tests with coverage report |
+| `npm run test:ci` | Run tests in CI mode (`--ci --runInBand --forceExit`) |
 | `npm run lint` | Run ESLint |
+
+---
+
+## Testing
+
+### Overview
+
+Tests use **Jest** (`jest-expo` preset) and **React Testing Library** (`@testing-library/react-native`). The test infrastructure handles NativeWind, Reanimated, and all Expo/React Native modules via mocks in `jest.setup.js`.
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run a specific test file
+npm test -- --testPathPattern=PrimaryButton
+
+# Watch mode (re-runs on changes)
+npm test -- --watch
+
+# With coverage
+npm test -- --coverage
+```
+
+### Test Structure
+
+```
+__tests__/
+  test-utils.tsx                  ← Shared helpers (QueryClient wrapper, re-exports)
+  AuthContextReducer.test.ts      ← Pure unit tests (reducer, helpers)
+  api.checkEmailExists.test.ts    ← API helper tests (supabase mock)
+  PrimaryButton.test.tsx          ← Component tests
+  SocialButton.test.tsx           ← Component tests
+  InputField.test.tsx             ← Component tests
+  AuthContext.test.tsx            ← Provider integration tests (renderHook)
+  AccountScreen.test.tsx          ← Screen integration tests (full render)
+```
+
+### Writing New Tests
+
+1. Create `__tests__/YourThing.test.tsx`
+2. Import helpers from `__tests__/test-utils` if you need a React Query wrapper
+3. For screen tests, mock context hooks at the module level with `jest.mock()`
+4. For pure functions (reducers, helpers), import and test directly
+
+See `CLAUDE.md` section 15 for detailed conventions and examples.
+
+---
+
+## CI/CD
+
+### GitHub Actions
+
+The CI workflow (`.github/workflows/test.yml`) runs automatically on:
+- **Push** to `main` and all conventional branches (`feat/**`, `fix/**`, `refactor/**`, etc.)
+- **Pull requests** targeting `main`
+
+It runs two jobs:
+
+| Job | What it checks |
+|---|---|
+| **Branch naming** | PR branch matches `<type>/<kebab-case-description>` pattern (PRs only) |
+| **Tests** | `npm run test:ci` — all Jest tests must pass |
+
+### Branch Protection (required setup)
+
+After pushing this workflow, configure branch protection on GitHub:
+
+1. Go to **Settings** → **Branches** → **Add branch protection rule**
+2. Branch name pattern: `main`
+3. Enable these settings:
+   - **Require a pull request before merging**
+     - Require approvals: 1 (or more for your team size)
+   - **Require status checks to pass before merging**
+     - Search and add: `Tests` and `Branch naming`
+     - Check "Require branches to be up to date before merging"
+   - **Do not allow bypassing the above settings**
+   - **Restrict deletions**
+   - **Block force pushes**
+   - **Automatically delete head branches** (keeps repo clean after merge)
+4. Save changes
+
+### Branch Naming Convention
+
+All branches must follow `<type>/<kebab-case-description>`:
+
+| Prefix | Purpose | Example |
+|---|---|---|
+| `feat/` | New feature | `feat/add-weekly-meal-plan` |
+| `fix/` | Bug fix | `fix/auth-redirect-loop` |
+| `refactor/` | Refactoring | `refactor/split-preferences-context` |
+| `chore/` | Build, deps, config | `chore/bump-expo-sdk-55` |
+| `docs/` | Documentation | `docs/update-api-guide` |
+| `test/` | Tests | `test/add-recipe-card-tests` |
+| `style/` | Formatting | `style/fix-indentation` |
+| `hotfix/` | Urgent prod fix | `hotfix/crash-on-empty-session` |
+| `release/` | Release prep | `release/1-0-0` |
+
+The description must be lowercase with hyphens only (no underscores, no uppercase).
+
+### Future CI Additions (planned)
+
+- TypeScript type-checking (`npx tsc --noEmit`)
+- ESLint (`npm run lint`)
+- EAS Build (preview on PR, production on merge)
+- EAS Submit (App Store + Google Play)
+- OTA updates via `expo-updates`
 
 ---
 

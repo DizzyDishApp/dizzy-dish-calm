@@ -1,6 +1,7 @@
 import React from "react";
 import { Pressable, Text } from "react-native";
 import { haptic } from "@/lib/haptics";
+import { LoadingDots } from "@/components/LoadingDots";
 
 interface PrimaryButtonProps {
   label: string;
@@ -8,6 +9,8 @@ interface PrimaryButtonProps {
   variant?: "warm" | "green" | "instacart";
   /** Whether to show the offset border style (social/CTA buttons) */
   bordered?: boolean;
+  /** Show animated loading dots instead of label */
+  loading?: boolean;
   accessibilityLabel?: string;
 }
 
@@ -26,6 +29,7 @@ export function PrimaryButton({
   onPress,
   variant = "warm",
   bordered = false,
+  loading = false,
   accessibilityLabel,
 }: PrimaryButtonProps) {
   const handlePress = () => {
@@ -65,21 +69,26 @@ export function PrimaryButton({
 
   return (
     <Pressable
-      onPress={handlePress}
+      onPress={loading ? undefined : handlePress}
       className={`py-3.5 rounded-btn items-center justify-center ${bgColor} ${
         bordered ? "border-2 border-txt" : ""
       }`}
-      style={shadowStyle}
+      style={[shadowStyle, loading ? { opacity: 0.85 } : undefined]}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={{ busy: loading }}
     >
-      <Text
-        className={`font-body-bold text-sm text-white ${
-          bordered ? "uppercase tracking-wider" : ""
-        }`}
-      >
-        {label}
-      </Text>
+      {loading ? (
+        <LoadingDots />
+      ) : (
+        <Text
+          className={`font-body-bold text-sm text-white ${
+            bordered ? "uppercase tracking-wider" : ""
+          }`}
+        >
+          {label}
+        </Text>
+      )}
     </Pressable>
   );
 }

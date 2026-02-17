@@ -8,8 +8,10 @@ import { SpinButton } from "@/components/SpinButton";
 import { Toggle } from "@/components/Toggle";
 import { Avatar } from "@/components/Avatar";
 import { GearButton } from "@/components/GearButton";
+import { useAuth } from "@/context/AuthContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useUI } from "@/context/UIContext";
+import { useAuthRedirect } from "@/context/AuthRedirectContext";
 import { useSpinRecipe, useSpinWeeklyPlan } from "@/hooks/useSpinRecipe";
 import { SpinningOverlay } from "@/components/SpinningOverlay";
 
@@ -26,7 +28,9 @@ const logo = require("@/assets/images/logo.png");
 export default function HomeScreen() {
   const router = useRouter();
   const { state: prefs, setWeeklyMode } = usePreferences();
+  const { state: auth } = useAuth();
   const { state: ui, setSpinning } = useUI();
+  const { setSnapshot } = useAuthRedirect();
   const spinRecipe = useSpinRecipe();
   const spinWeeklyPlan = useSpinWeeklyPlan();
 
@@ -135,7 +139,10 @@ export default function HomeScreen() {
           entering={FadeInDown.delay(400).duration(600).springify()}
           className="flex-row items-center pb-5"
         >
-          <Avatar size="small" onPress={() => router.push("/(modal)/account")} />
+          <Avatar size="small" onPress={() => {
+            if (!auth.isAuthenticated) setSnapshot("/");
+            router.push("/(modal)/account");
+          }} />
           <View className="flex-1 items-center">
             <Pressable
               onPress={() => router.push("/saved")}

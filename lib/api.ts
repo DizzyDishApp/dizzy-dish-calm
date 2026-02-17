@@ -1,8 +1,8 @@
+import { supabase } from "@/lib/supabase";
 import type {
   Recipe,
   WeeklyPlan,
   SpinRequest,
-  SpinResponse,
   User,
   SubscriptionPlan,
   InstacartConnectRequest,
@@ -12,35 +12,21 @@ import type {
  * Raw fetcher functions — plain async functions that return typed data.
  * No React Query logic here. These are called by query/mutation hooks.
  *
- * MIGRATION NOTE: All endpoints are stubbed with mock data.
- * Replace BASE_URL and remove mock responses when the real API is ready.
+ * Auth and saved recipes are wired to Supabase.
+ * Recipe spin endpoints are still mocked until the real API is built.
  */
 
-const BASE_URL = "https://api.dizzydish.app/v1";
+// ── Auth Helpers ──
 
-// ── Helpers ──
-
-async function request<T>(
-  path: string,
-  options?: RequestInit
-): Promise<T> {
-  const response = await fetch(`${BASE_URL}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      // MIGRATION NOTE: Auth header should be injected via an interceptor
-      // or passed as a parameter when the real API is integrated.
-    },
-    ...options,
+export async function checkEmailExists(email: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("check_email_exists", {
+    email_input: email.toLowerCase().trim(),
   });
-
-  if (!response.ok) {
-    throw new Error(`API error: ${response.status} ${response.statusText}`);
-  }
-
-  return response.json() as Promise<T>;
+  if (error) return false;
+  return data === true;
 }
 
-// ── Mock Data ──
+// ── Mock Data (spin still uses these) ──
 
 const MOCK_RECIPES: Recipe[] = [
   {
@@ -183,11 +169,10 @@ const MOCK_WEEKLY_PLAN: WeeklyPlan = {
   reducedItems: 28,
 };
 
-// ── Recipe Fetchers ──
+// ── Recipe Fetchers (still mocked) ──
 
 export async function spinRecipe(_request: SpinRequest): Promise<Recipe> {
-  // MIGRATION NOTE: Replace with real API call:
-  // return request<SpinResponse>('/recipes/spin', { method: 'POST', body: JSON.stringify(request) });
+  // MIGRATION NOTE: Replace with real API call when recipe generation API is built
   await new Promise((resolve) => setTimeout(resolve, 800));
   const random = MOCK_RECIPES[Math.floor(Math.random() * MOCK_RECIPES.length)];
   return random;
@@ -201,98 +186,97 @@ export async function spinWeeklyPlan(
   return MOCK_WEEKLY_PLAN;
 }
 
-export async function fetchSavedRecipes(): Promise<Recipe[]> {
-  // MIGRATION NOTE: Replace with real API call:
-  // return request<Recipe[]>('/recipes/saved');
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  return MOCK_RECIPES;
-}
-
-export async function saveRecipe(recipeId: string): Promise<void> {
-  // MIGRATION NOTE: Replace with real API call:
-  // return request<void>(`/recipes/${recipeId}/save`, { method: 'POST' });
-  await new Promise((resolve) => setTimeout(resolve, 200));
-}
-
-export async function unsaveRecipe(recipeId: string): Promise<void> {
-  // MIGRATION NOTE: Replace with real API call:
-  // return request<void>(`/recipes/${recipeId}/unsave`, { method: 'DELETE' });
-  await new Promise((resolve) => setTimeout(resolve, 200));
-}
-
 export async function fetchRecipeDetail(id: string): Promise<Recipe> {
-  // MIGRATION NOTE: Replace with real API call:
-  // return request<Recipe>(`/recipes/${id}`);
+  // MIGRATION NOTE: Replace with real API call
   await new Promise((resolve) => setTimeout(resolve, 200));
   return MOCK_RECIPES.find((r) => r.id === id) ?? MOCK_RECIPES[0];
 }
 
-// ── User Fetchers ──
+// ── Saved Recipes (Supabase) ──
+
+export async function fetchSavedRecipes(): Promise<Recipe[]> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return [];
+
+  const { data, error } = await supabase
+    .from("saved_recipes")
+    .select("recipe_id, recipe_data")
+    .eq("user_id", session.user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => row.recipe_data as Recipe);
+}
+
+export async function saveRecipe(
+  recipeId: string,
+  recipe: Recipe
+): Promise<void> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Not authenticated");
+
+  const { error } = await supabase.from("saved_recipes").upsert(
+    {
+      user_id: session.user.id,
+      recipe_id: recipeId,
+      recipe_data: recipe,
+    },
+    { onConflict: "user_id,recipe_id" }
+  );
+
+  if (error) throw new Error(error.message);
+}
+
+export async function unsaveRecipe(recipeId: string): Promise<void> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Not authenticated");
+
+  const { error } = await supabase
+    .from("saved_recipes")
+    .delete()
+    .eq("user_id", session.user.id)
+    .eq("recipe_id", recipeId);
+
+  if (error) throw new Error(error.message);
+}
+
+// ── User Profile (Supabase) ──
 
 export async function fetchUserProfile(): Promise<User> {
-  // MIGRATION NOTE: Replace with real API call:
-  // return request<User>('/user/profile');
-  await new Promise((resolve) => setTimeout(resolve, 300));
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    throw new Error("Not authenticated");
+  }
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", session.user.id)
+    .single();
+
+  if (error) throw new Error(error.message);
+
   return {
-    id: "user-1",
-    email: "user@example.com",
-    displayName: "Chef",
-    isPro: false,
-    instacartConnected: false,
+    id: data.id,
+    email: data.email ?? session.user.email ?? "",
+    displayName: data.display_name,
+    avatarUrl: data.avatar_url,
+    isPro: data.is_pro ?? false,
+    instacartConnected: data.instacart_connected ?? false,
   };
 }
 
 export async function fetchSubscription(): Promise<SubscriptionPlan> {
-  // MIGRATION NOTE: Replace with real API call
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  // MIGRATION NOTE: Replace with RevenueCat integration
   return {
-    id: "plan-pro",
-    name: "Pro Plan",
-    price: "$3/month",
-    isActive: false,
+    id: "plan-free",
+    name: "Free Plan",
+    price: "$0/month",
+    isActive: true,
   };
 }
 
-// ── Auth Fetchers ──
-
-export async function loginWithEmail(
-  email: string,
-  _password: string
-): Promise<{ user: User; accessToken: string; refreshToken: string }> {
-  // MIGRATION NOTE: Replace with real API call
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  return {
-    user: {
-      id: "user-1",
-      email,
-      displayName: "Chef",
-      isPro: false,
-      instacartConnected: false,
-    },
-    accessToken: "mock-access-token",
-    refreshToken: "mock-refresh-token",
-  };
-}
-
-export async function loginWithSocial(
-  _provider: "google" | "facebook" | "apple"
-): Promise<{ user: User; accessToken: string; refreshToken: string }> {
-  // MIGRATION NOTE: Replace with real social auth via expo-auth-session
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  return {
-    user: {
-      id: "user-1",
-      email: "user@example.com",
-      displayName: "Chef",
-      isPro: false,
-      instacartConnected: false,
-    },
-    accessToken: "mock-access-token",
-    refreshToken: "mock-refresh-token",
-  };
-}
-
-// ── Instacart Fetchers ──
+// ── Instacart Fetchers (still mocked) ──
 
 export async function connectInstacart(
   _request: InstacartConnectRequest

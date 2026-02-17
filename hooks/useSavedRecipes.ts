@@ -30,7 +30,7 @@ export function useSaveRecipe() {
     { recipeId: string; recipe: Recipe },
     OptimisticContext
   >({
-    mutationFn: ({ recipeId }) => saveRecipe(recipeId),
+    mutationFn: ({ recipeId, recipe }) => saveRecipe(recipeId, recipe),
     onMutate: async ({ recipe }) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.recipes.saved() });
       const previous = queryClient.getQueryData<Recipe[]>(
