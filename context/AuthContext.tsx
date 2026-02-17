@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useReducer } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { User } from "@/types";
 import { supabase } from "@/lib/supabase";
+import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
 
 // ── State ──
 
@@ -76,6 +78,7 @@ interface AuthContextValue {
   state: AuthState;
   signUp: (email: string, password: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signInWithGoogle: () => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -137,12 +140,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: null };
   };
 
+  const signInWithGoogle = async (): Promise<{ error: string | null }> => {
+    try {
+      const redirectTo = Linking.createURL("auth/callback");
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo, skipBrowserRedirect: true },
+      });
+
+      if (error) return { error: error.message };
+      if (!data.url) return { error: "No OAuth URL returned." };
+
+      const result = await WebBrowser.openAuthSessionAsync(
+        data.url,
+        redirectTo,
+        { preferEphemeralSession: false }
+      );
+
+      if (result.type !== "success") {
+        return { error: null }; // user cancelled — not an error
+      }
+
+      // Extract tokens from the redirect URL fragment
+      const url = result.url;
+      const params = new URLSearchParams(
+        url.includes("#") ? url.split("#")[1] : url.split("?")[1]
+      );
+      const accessToken = params.get("access_token");
+      const refreshToken = params.get("refresh_token");
+
+      if (accessToken && refreshToken) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (sessionError) return { error: sessionError.message };
+      }
+
+      return { error: null };
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Google sign-in failed.";
+      return { error: message };
+    }
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ state, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ state, signUp, signIn, signInWithGoogle, signOut }}>
       {children}
     </AuthContext.Provider>
   );

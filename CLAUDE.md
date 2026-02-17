@@ -9,7 +9,7 @@ Dizzy Dish is a mobile recipe decision app designed for the overwhelmed parent a
 2. **Weekly Plan** — Toggle weekly mode → spin → 7-day meal plan with shared ingredient optimization → bulk order via Instacart
 3. **Save/Unsave Recipes** — Heart toggle on any result to build a saved collection
 4. **Preferences** — Set dietary filters (19 options), time constraints, calorie preferences; Pro users get persistent preferences
-5. **Account** — Identifier-first email auth via Supabase (social auth visual-only, planned for wiring), post-auth redirect, Instacart connection, subscription management
+5. **Account** — Identifier-first email auth via Supabase, Google OAuth wired (Apple/Facebook planned), post-auth redirect, Instacart connection, subscription management
 6. **Instacart Integration** — Connect account to one-tap order ingredients from recipe results
 
 **Design philosophy:** Calm competence. One tap. Deep breath. Warm, organic color palette (#FAF6F1 background, #C65D3D warm accent). Serif display font (Fraunces) for character, clean sans (Plus Jakarta Sans) for readability.
@@ -37,6 +37,8 @@ Dizzy Dish is a mobile recipe decision app designed for the overwhelmed parent a
 | `expo-font` | ~13.0 | Custom font loading (Fraunces, Plus Jakarta Sans) |
 | `expo-splash-screen` | ~0.29 | Splash screen management during font loading |
 | `expo-av` | ~14.0 | Audio/video playback (future use) |
+| `expo-web-browser` | latest | In-app browser for OAuth flows |
+| `expo-crypto` | latest | Crypto primitives for PKCE auth flows |
 | `@expo/vector-icons` | ^14.0 | Icon library (Ionicons primary set) |
 
 **State management separation of concerns:**
@@ -265,6 +267,26 @@ Two tables in `public` schema, both with Row Level Security (RLS) enabled:
 4. Session tokens auto-refresh via Supabase client (configured with `autoRefreshToken: true`)
 5. Sessions persist across app restarts via AsyncStorage
 
+### Google OAuth Flow
+Google sign-in uses `supabase.auth.signInWithOAuth` + `expo-web-browser`:
+1. `signInWithGoogle()` in `AuthContext` calls `supabase.auth.signInWithOAuth({ provider: "google" })` with `skipBrowserRedirect: true`
+2. Opens the returned URL in an in-app browser via `WebBrowser.openAuthSessionAsync`
+3. After Google consent, Supabase redirects to the app's `redirectTo` URL with tokens in the URL fragment
+4. Tokens are extracted and passed to `supabase.auth.setSession()` to establish the session
+5. `onAuthStateChange` fires, AuthContext updates, user is signed in
+
+**Redirect URI:** `Linking.createURL("auth/callback")` — resolves to `dizzydish://auth/callback` in production builds, `exp://...` in Expo Go.
+
+**Supabase config required:**
+- Google provider enabled with Web Client ID + Secret
+- `dizzydish://auth/callback` in Redirect URLs (and `exp://` variant for dev)
+
+**Google Cloud Console config required:**
+- Web OAuth 2.0 Client ID with `https://<project>.supabase.co/auth/v1/callback` as authorized redirect URI
+- OAuth consent screen configured with authorized domains, test users (if in Testing mode)
+
+**Known limitation:** OAuth does not work in Expo Go due to `exp://` redirect scheme not being intercepted by Chrome Custom Tabs / ASWebAuthenticationSession. Requires a development build (`npx expo run:ios` / `run:android`).
+
 ### Account Screen Auth UX
 The account screen (`app/(modal)/account.tsx`) uses an **identifier-first** pattern:
 1. User enters email → taps GET STARTED
@@ -292,7 +314,8 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 | Session persistence & refresh | Supabase Auth + AsyncStorage |
 | User profile (read) | Supabase `profiles` table |
 | Saved recipes (CRUD) | Supabase `saved_recipes` table |
-| Social auth (Google/Apple/Facebook) | Not yet wired |
+| Google OAuth sign-in | Supabase OAuth + expo-web-browser (wired, needs dev build to test — Expo Go can't handle `exp://` redirect) |
+| Social auth (Apple/Facebook) | Not yet wired |
 | Recipe spin | Mocked in `lib/api.ts` |
 | Weekly plan spin | Mocked in `lib/api.ts` |
 | Subscription / payments | Mocked (RevenueCat planned) |
@@ -408,7 +431,7 @@ export function useRecipeSearch(query: string) {
 
 | Context | File | Purpose |
 |---|---|---|
-| `AuthContext` | `context/AuthContext.tsx` | Supabase session, user object, signUp/signIn/signOut actions, auto-restores via `onAuthStateChange` |
+| `AuthContext` | `context/AuthContext.tsx` | Supabase session, user object, signUp/signIn/signInWithGoogle/signOut actions, auto-restores via `onAuthStateChange` |
 | `AuthRedirectContext` | `context/AuthRedirectContext.tsx` | Post-auth redirect: captures route + pending action before auth, replays after sign-in. Persisted to AsyncStorage for OAuth backgrounding. |
 | `ThemeContext` | `context/ThemeContext.tsx` | Light/dark mode preference, persisted to AsyncStorage |
 | `UIContext` | `context/UIContext.tsx` | Ephemeral UI state: isSpinning overlay, toast messages |
@@ -775,7 +798,9 @@ function renderWithProviders(ui: React.ReactElement) {
 
 11. **`react-native-url-polyfill/auto` on Expo SDK 52+ / Hermes** — Do NOT import it. Hermes has native URL/URLSearchParams support. Importing the polyfill causes a silent crash (app stuck on splash screen with no errors). The package is installed as a peer dependency but must not be imported.
 
-12. **KeyboardAvoidingView in modals** — `KeyboardAvoidingView` doesn't work reliably in Expo Go modals. Instead, use `Keyboard` event listeners to track keyboard height, dynamically pad the ScrollView content, and `measureInWindow` + `scrollTo` to keep the focused input visible. See `account.tsx` for the pattern.
+12. **OAuth in Expo Go** — `WebBrowser.openAuthSessionAsync` cannot intercept `exp://` redirects reliably on Android (Chrome Custom Tabs) or handle passkeys. OAuth flows (Google, Apple, Facebook) require a development build with the native `dizzydish://` scheme registered. Use `npx expo run:ios` / `run:android` to test OAuth.
+
+13. **KeyboardAvoidingView in modals** — `KeyboardAvoidingView` doesn't work reliably in Expo Go modals. Instead, use `Keyboard` event listeners to track keyboard height, dynamically pad the ScrollView content, and `measureInWindow` + `scrollTo` to keep the focused input visible. See `account.tsx` for the pattern.
 
 ---
 

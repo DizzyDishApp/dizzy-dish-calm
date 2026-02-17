@@ -31,7 +31,7 @@
 - [x] Wire up email/password sign-up and sign-in on account screen
 - [x] Auto-create profile row on sign-up via database trigger
 - [ ] Wire up Apple Sign-In
-- [ ] Wire up Google Sign-In
+- [ ] 🔄 Wire up Google Sign-In — code wired, needs dev build to test (Expo Go can't handle redirect)
 - [ ] Wire up Facebook Login
 - [x] Auth UI — OAuth buttons (visual only, Google/Facebook/Apple)
 - [x] Auth UI — Identifier-first flow (email → detect existing/new → password)
@@ -176,3 +176,4 @@
 - [x] LoadingDots component — animated bouncing dots for button loading states
 - [x] PrimaryButton `loading` prop — swaps label for LoadingDots, disables press
 - [x] Account screen keyboard-aware scroll — auto-scrolls to obscured inputs on focus
+- [x] Google OAuth — `signInWithGoogle()` in AuthContext via Supabase OAuth + expo-web-browser, Google button wired on account screen. Supabase + Google Cloud Console configured. Blocked on Expo Go redirect handling; needs dev build (`npx expo run:android`/`run:ios`) to test end-to-end.

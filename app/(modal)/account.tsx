@@ -56,7 +56,7 @@ function friendlyError(msg: string): string {
 
 export default function AccountScreen() {
   const router = useRouter();
-  const { state: auth, signUp, signIn, signOut } = useAuth();
+  const { state: auth, signUp, signIn, signInWithGoogle, signOut } = useAuth();
   const { consumeSnapshot } = useAuthRedirect();
   const { showToast } = useUI();
   const { data: subscription } = useSubscription();
@@ -339,7 +339,10 @@ export default function AccountScreen() {
 
             <SocialButton
               provider="google"
-              onPress={() => console.log("Google OAuth — not yet implemented")}
+              onPress={async () => {
+                const { error: googleError } = await signInWithGoogle();
+                if (googleError) setError(googleError);
+              }}
             />
             <SocialButton
               provider="facebook"
