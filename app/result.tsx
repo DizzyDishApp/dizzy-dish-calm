@@ -12,6 +12,8 @@ import { PrimaryButton } from "@/components/PrimaryButton";
 import { SecondaryButton } from "@/components/SecondaryButton";
 import { useSpinRecipe } from "@/hooks/useSpinRecipe";
 import { useSaveRecipe, useUnsaveRecipe } from "@/hooks/useSavedRecipes";
+import { useAuth } from "@/context/AuthContext";
+import { useAuthRedirect } from "@/context/AuthRedirectContext";
 import { useUI } from "@/context/UIContext";
 import { haptic } from "@/lib/haptics";
 import type { Recipe } from "@/types";
@@ -29,6 +31,8 @@ import type { Recipe } from "@/types";
  */
 export default function ResultScreen() {
   const router = useRouter();
+  const { state: auth } = useAuth();
+  const { setSnapshot } = useAuthRedirect();
   const { setSpinning } = useUI();
   const spinRecipe = useSpinRecipe();
   const saveMutation = useSaveRecipe();
@@ -50,13 +54,24 @@ export default function ResultScreen() {
 
   const handleToggleSave = useCallback(() => {
     haptic.medium();
+
+    // If not authenticated, redirect to auth with a pending save action
+    if (!auth.isAuthenticated && !saved) {
+      setSnapshot("/result", {
+        type: "save_recipe",
+        payload: { recipeId: recipe.id, recipe },
+      });
+      router.push("/(modal)/account");
+      return;
+    }
+
     if (saved) {
       unsaveMutation.mutate(recipe.id);
     } else {
       saveMutation.mutate({ recipeId: recipe.id, recipe });
     }
     setSaved(!saved);
-  }, [saved, recipe, saveMutation, unsaveMutation]);
+  }, [saved, recipe, saveMutation, unsaveMutation, auth.isAuthenticated, setSnapshot, router]);
 
   const handleSpinAgain = useCallback(() => {
     router.back();

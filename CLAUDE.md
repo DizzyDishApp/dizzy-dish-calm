@@ -9,7 +9,7 @@ Dizzy Dish is a mobile recipe decision app designed for the overwhelmed parent a
 2. **Weekly Plan** — Toggle weekly mode → spin → 7-day meal plan with shared ingredient optimization → bulk order via Instacart
 3. **Save/Unsave Recipes** — Heart toggle on any result to build a saved collection
 4. **Preferences** — Set dietary filters (19 options), time constraints, calorie preferences; Pro users get persistent preferences
-5. **Account** — Social auth (Google/Facebook/Apple), email auth, Instacart connection, subscription management
+5. **Account** — Identifier-first email auth via Supabase (social auth visual-only, planned for wiring), post-auth redirect, Instacart connection, subscription management
 6. **Instacart Integration** — Connect account to one-tap order ingredients from recipe results
 
 **Design philosophy:** Calm competence. One tap. Deep breath. Warm, organic color palette (#FAF6F1 background, #C65D3D warm accent). Serif display font (Fraunces) for character, clean sans (Plus Jakarta Sans) for readability.
@@ -24,12 +24,14 @@ Dizzy Dish is a mobile recipe decision app designed for the overwhelmed parent a
 | `expo-router` | ~4.0 | File-based navigation (replaces React Navigation manual setup) |
 | `react` / `react-native` | 18.3 / 0.76 | Core UI primitives |
 | `typescript` | ~5.3 | Strict mode enabled for type safety |
+| `@supabase/supabase-js` | ^2.x | **Backend** — auth, database, real-time (Postgres + RLS) |
+| `react-native-url-polyfill` | ^2.x | URL polyfill — **do NOT import** on Expo SDK 52+ / Hermes (native URL support) |
 | `nativewind` | ^4.1 | Tailwind CSS for React Native via `className` props |
 | `tailwindcss` | ^3.4 | Utility-first CSS framework (config drives NativeWind) |
 | `react-native-reanimated` | ~3.16 | 60fps animations on the UI thread |
 | `react-native-gesture-handler` | ~2.20 | Touch/gesture handling (wraps root) |
 | `@tanstack/react-query` | ^5.60 | **Server state** — data fetching, caching, mutations |
-| `@react-native-async-storage/async-storage` | ^2.0 | Persistent local storage (auth tokens, preferences) |
+| `@react-native-async-storage/async-storage` | ^2.0 | Persistent local storage (Supabase sessions, preferences) |
 | `expo-haptics` | ~14.0 | Haptic feedback (iOS Taptic Engine, Android vibration) |
 | `expo-image` | ~2.0 | Performant image loading with caching |
 | `expo-font` | ~13.0 | Custom font loading (Fraunces, Plus Jakarta Sans) |
@@ -39,7 +41,8 @@ Dizzy Dish is a mobile recipe decision app designed for the overwhelmed parent a
 
 **State management separation of concerns:**
 - **React Query** owns all **server state**: recipe data, user profiles, saved recipes, subscription info, Instacart status. Any data that originates from an API belongs here.
-- **React Context + useReducer** owns all **client state**: auth session, theme preference, dietary/time/calorie preferences, weekly mode, UI ephemeral state (spinning overlay, toasts). Any state that exists purely in the client belongs here.
+- **Supabase** is the backend for **auth** (email sign-up/sign-in via `@supabase/supabase-js`) and **database** (profiles, saved recipes via Postgres + Row Level Security). The Supabase client lives in `lib/supabase.ts` and uses AsyncStorage for session persistence.
+- **React Context + useReducer** owns all **client state**: auth session (driven by Supabase's `onAuthStateChange`), theme preference, dietary/time/calorie preferences, weekly mode, UI ephemeral state (spinning overlay, toasts). Any state that exists purely in the client belongs here.
 
 ---
 
@@ -57,7 +60,7 @@ app/
   (modal)/
     _layout.tsx             ← Modal group layout
     settings.tsx            ← Preferences: dietary, time, calorie filters
-    account.tsx             ← Auth, social login, Instacart, subscription, logout
+    account.tsx             ← Auth (Supabase email sign-up/sign-in), Instacart, subscription, sign out
     instacart.tsx           ← Instacart account connection flow
 
 components/
@@ -67,9 +70,10 @@ components/
   GearButton.tsx            ← Settings gear icon button
   HeaderBar.tsx             ← Shared header with back button + title
   HeartButton.tsx           ← Heart/save toggle icon
-  InputField.tsx            ← Styled TextInput matching design system
+  InputField.tsx            ← Styled TextInput (forwardRef) matching design system
+  LoadingDots.tsx           ← Animated bouncing dots for button loading states
   MetaPill.tsx              ← Read-only info pill (time, calories, servings)
-  PrimaryButton.tsx         ← Primary CTA (warm/green/instacart variants)
+  PrimaryButton.tsx         ← Primary CTA (warm/green/instacart variants, loading prop)
   RecipeCard.tsx            ← Recipe list item with emoji, name, time, heart
   SecondaryButton.tsx       ← Secondary action (cream/warmPale/ghost variants)
   SmartGroceryCard.tsx      ← Weekly plan shared ingredients callout
@@ -82,7 +86,8 @@ components/
   WeeklyDayRow.tsx          ← Single day row in weekly plan
 
 context/
-  AuthContext.tsx            ← Auth state: user, token, login/logout, session restore
+  AuthContext.tsx            ← Auth state: Supabase session, user, signUp/signIn/signOut
+  AuthRedirectContext.tsx    ← Post-auth redirect: snapshot route + pending action, AsyncStorage persistence
   ThemeContext.tsx           ← Theme preference: light/dark
   UIContext.tsx              ← Ephemeral UI: isSpinning, toasts
   PreferencesContext.tsx     ← User preferences: dietary, time, calories, weekly, pro
@@ -97,7 +102,8 @@ hooks/
   useInstacart.ts           ← Mutation: useConnectInstacart
 
 lib/
-  api.ts                    ← All raw fetcher functions (mock data, typed returns)
+  supabase.ts               ← Supabase client (auth + DB, session persisted via AsyncStorage)
+  api.ts                    ← Raw fetcher functions (auth/saved/profile → Supabase, spin → mock)
   queryClient.ts            ← QueryClient instance with mobile-optimized defaults
   queryKeys.ts              ← Query key factory constants
   asyncStorage.ts           ← Typed AsyncStorage helpers with "dizzy:" key prefix
@@ -144,8 +150,9 @@ This is the most important architectural decision:
 | State Type | Owner | Examples |
 |---|---|---|
 | Recipe data from API | React Query | Spin results, saved recipes, recipe details |
-| User profile from API | React Query | Profile data, subscription info |
-| Auth session | React Context (AuthContext) | User object, JWT token, login/logout |
+| User profile from Supabase | React Query | Profile data from `profiles` table |
+| Saved recipes from Supabase | React Query | `saved_recipes` table (CRUD via RLS) |
+| Auth session | React Context (AuthContext) + Supabase | Supabase session, user object, signUp/signIn/signOut |
 | Theme preference | React Context (ThemeContext) | Light/dark mode |
 | Dietary/time/calorie filters | React Context (PreferencesContext) | User's filter selections |
 | Weekly mode toggle | React Context (PreferencesContext) | Single vs weekly spin |
@@ -160,6 +167,7 @@ All animations use **React Native Reanimated v3** running on the UI thread for 6
 - **slideUp** (result cards): `SlideInDown` layout animation
 - **spinWheel** (spin sequence): `withTiming` rotation 0→1080deg with cubic-bezier easing
 - **confFloat** (celebration): `withTiming` for translateY/scale/opacity with staggered delays
+- **loadingDots** (button loading): 3 dots with staggered `translateY` bounce via `withDelay` + `withRepeat` (see `LoadingDots.tsx`)
 
 ### Styling Approach
 **NativeWind v4** provides Tailwind utility classes via `className` props. Benefits:
@@ -207,7 +215,92 @@ Fonts (Fraunces, Plus Jakarta Sans) are loaded via `@expo-google-fonts/*` packag
 
 ---
 
-## 6. React Query Guide
+## 6. Supabase Guide
+
+### Overview
+Supabase provides the backend for authentication and database. The client is initialized in `lib/supabase.ts` with session persistence via AsyncStorage.
+
+### Architecture
+```
+lib/supabase.ts       → Supabase client singleton (auth + DB)
+context/AuthContext    → Listens to onAuthStateChange, exposes signUp/signIn/signOut
+lib/api.ts            → Fetcher functions that call supabase.from(...) for DB operations
+hooks/use*.ts          → React Query hooks that call api.ts fetchers
+```
+
+### Database Tables
+Two tables in `public` schema, both with Row Level Security (RLS) enabled:
+
+**`profiles`** — Auto-created on sign-up via trigger on `auth.users`:
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid (PK) | References `auth.users(id)` |
+| `email` | text | |
+| `display_name` | text | Defaults to email prefix |
+| `avatar_url` | text | |
+| `is_pro` | boolean | Default `false` |
+| `instacart_connected` | boolean | Default `false` |
+| `created_at` | timestamptz | |
+| `updated_at` | timestamptz | |
+
+**`saved_recipes`** — User's saved recipe collection:
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid (PK) | Auto-generated |
+| `user_id` | uuid (FK) | References `profiles(id)` |
+| `recipe_id` | text | |
+| `recipe_data` | jsonb | Full `Recipe` object |
+| `created_at` | timestamptz | |
+| Unique constraint | | `(user_id, recipe_id)` |
+
+### RLS Policies
+- Users can only read/update their own profile
+- Users can only CRUD their own saved recipes
+- All queries automatically scoped by `auth.uid()`
+
+### Auth Flow
+1. `AuthProvider` mounts → calls `supabase.auth.getSession()` to restore existing session
+2. Subscribes to `supabase.auth.onAuthStateChange()` for real-time session updates
+3. On sign-up/sign-in → Supabase sets session → `onAuthStateChange` fires → AuthContext updates
+4. Session tokens auto-refresh via Supabase client (configured with `autoRefreshToken: true`)
+5. Sessions persist across app restarts via AsyncStorage
+
+### Account Screen Auth UX
+The account screen (`app/(modal)/account.tsx`) uses an **identifier-first** pattern:
+1. User enters email → taps GET STARTED
+2. `checkEmailExists` RPC checks Supabase for existing account (requires `check_email_exists` SQL function)
+3. Existing user → single password field + "Welcome Back" heading
+4. New user → password + confirm password + "Create Account" heading
+5. On successful auth → `AuthRedirectContext` replays any pending action (e.g., save recipe) and navigates back
+
+**Post-auth redirect:** Before navigating to auth, screens call `setSnapshot(route, pendingAction?)`. After sign-in, account screen consumes the snapshot, executes the pending action, and navigates back. Snapshots persist to AsyncStorage to survive OAuth app backgrounding.
+
+**Keyboard handling:** The account screen uses `Keyboard` event listeners + `measureInWindow` to auto-scroll inputs above the keyboard only when actually obscured. Bottom padding dynamically expands by keyboard height.
+
+**Loading states:** `PrimaryButton` accepts a `loading` prop that shows animated bouncing dots (`LoadingDots` component) and disables press.
+
+### Environment Variables
+```
+EXPO_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+```
+
+### What's wired to Supabase vs. still mocked
+| Feature | Status |
+|---|---|
+| Email sign-up / sign-in | Supabase Auth |
+| Session persistence & refresh | Supabase Auth + AsyncStorage |
+| User profile (read) | Supabase `profiles` table |
+| Saved recipes (CRUD) | Supabase `saved_recipes` table |
+| Social auth (Google/Apple/Facebook) | Not yet wired |
+| Recipe spin | Mocked in `lib/api.ts` |
+| Weekly plan spin | Mocked in `lib/api.ts` |
+| Subscription / payments | Mocked (RevenueCat planned) |
+| Instacart | Mocked |
+
+---
+
+## 7. React Query Guide
 
 ### How data fetching is structured
 
@@ -309,13 +402,14 @@ export function useRecipeSearch(query: string) {
 
 ---
 
-## 7. React Context Guide
+## 8. React Context Guide
 
 ### Purpose of each context
 
 | Context | File | Purpose |
 |---|---|---|
-| `AuthContext` | `context/AuthContext.tsx` | User object, JWT token, login/logout actions, session restoration from AsyncStorage |
+| `AuthContext` | `context/AuthContext.tsx` | Supabase session, user object, signUp/signIn/signOut actions, auto-restores via `onAuthStateChange` |
+| `AuthRedirectContext` | `context/AuthRedirectContext.tsx` | Post-auth redirect: captures route + pending action before auth, replays after sign-in. Persisted to AsyncStorage for OAuth backgrounding. |
 | `ThemeContext` | `context/ThemeContext.tsx` | Light/dark mode preference, persisted to AsyncStorage |
 | `UIContext` | `context/UIContext.tsx` | Ephemeral UI state: isSpinning overlay, toast messages |
 | `PreferencesContext` | `context/PreferencesContext.tsx` | Dietary filters, time/calorie preferences, weekly mode, pro status, persisted to AsyncStorage |
@@ -326,8 +420,8 @@ export function useRecipeSearch(query: string) {
 import { useAuth } from "@/context/AuthContext";
 
 function MyComponent() {
-  const { state, login, logout } = useAuth();
-  // state.user, state.token, state.isAuthenticated, state.isLoading
+  const { state, signUp, signIn, signOut } = useAuth();
+  // state.user, state.session, state.isAuthenticated, state.isLoading
 }
 ```
 
@@ -397,12 +491,12 @@ Use `useEffect` inside the Provider to read from AsyncStorage on mount and write
 | Is user input not yet submitted | Local component state (`useState`) |
 | Is UI state (modal open, toast visible) | UIContext |
 | Is a user preference that persists | PreferencesContext + AsyncStorage |
-| Is auth session data | AuthContext + AsyncStorage |
+| Is auth session data | AuthContext (backed by Supabase `onAuthStateChange`) |
 | Is theme preference | ThemeContext + AsyncStorage |
 
 ---
 
-## 8. NativeWind Configuration
+## 9. NativeWind Configuration
 
 ### How it's wired up
 
@@ -437,7 +531,7 @@ For platform-specific:
 
 ---
 
-## 9. Reanimated Patterns
+## 10. Reanimated Patterns
 
 ### Enter/Exit Animations
 
@@ -483,7 +577,7 @@ opacity.value = withDelay(delay, withTiming(0, { duration: 1500 }));
 
 ---
 
-## 10. Component Guidelines
+## 11. Component Guidelines
 
 ### Naming
 - PascalCase for component files: `SpinButton.tsx`, `RecipeCard.tsx`
@@ -526,7 +620,7 @@ Every interactive element must have:
 
 ---
 
-## 11. TypeScript Conventions
+## 12. TypeScript Conventions
 
 ### Strict mode
 `strict: true` in `tsconfig.json`. No `any` types. No implicit returns.
@@ -553,8 +647,8 @@ interface Props {
 
 ### Typing Context
 ```ts
-interface AuthState { user: User | null; token: string | null; }
-type AuthAction = | { type: "SET_USER"; payload: { user: User; token: string } } | { type: "LOGOUT" };
+interface AuthState { user: User | null; session: Session | null; isLoading: boolean; isAuthenticated: boolean; }
+type AuthAction = | { type: "SET_SESSION"; payload: { user: User; session: Session } } | { type: "CLEAR_SESSION" } | { type: "SET_LOADING"; payload: boolean };
 ```
 
 ### Typing React Query
@@ -565,7 +659,7 @@ useMutation<void, Error, { recipeId: string }>({ ... })
 
 ---
 
-## 12. Navigation Guide
+## 13. Navigation Guide
 
 ### Structure
 - `app/index.tsx` — Home (entry point)
@@ -597,7 +691,7 @@ Configured via `scheme: "dizzydish"` in `app.json`. Routes map directly:
 
 ---
 
-## 13. Performance Guidelines
+## 14. Performance Guidelines
 
 - Use `React.memo` for list item components (`RecipeCard`, `WeeklyDayRow`)
 - Use `useCallback` for event handlers passed to children
@@ -612,7 +706,7 @@ Configured via `scheme: "dizzydish"` in `app.json`. Routes map directly:
 
 ---
 
-## 14. Testing
+## 15. Testing
 
 ### Setup
 ```bash
@@ -657,7 +751,7 @@ function renderWithProviders(ui: React.ReactElement) {
 
 ---
 
-## 15. Common Pitfalls
+## 16. Common Pitfalls
 
 1. **Text not wrapped in `<Text>`** — React Native requires all text content inside `<Text>` components. Bare strings cause crashes.
 
@@ -679,9 +773,13 @@ function renderWithProviders(ui: React.ReactElement) {
 
 10. **Haptic feedback on web** — `expo-haptics` is a no-op on web. The code handles this gracefully.
 
+11. **`react-native-url-polyfill/auto` on Expo SDK 52+ / Hermes** — Do NOT import it. Hermes has native URL/URLSearchParams support. Importing the polyfill causes a silent crash (app stuck on splash screen with no errors). The package is installed as a peer dependency but must not be imported.
+
+12. **KeyboardAvoidingView in modals** — `KeyboardAvoidingView` doesn't work reliably in Expo Go modals. Instead, use `Keyboard` event listeners to track keyboard height, dynamically pad the ScrollView content, and `measureInWindow` + `scrollTo` to keep the focused input visible. See `account.tsx` for the pattern.
+
 ---
 
-## 16. Contributing
+## 17. Contributing
 
 ### Branch naming
 - `feature/short-description`

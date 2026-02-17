@@ -14,23 +14,30 @@
 
 ### Backend / API
 
-- [ ] Stand up real API server (replace mock endpoints in `lib/api.ts`)
+- [x] Set up Supabase project and database (profiles + saved_recipes tables with RLS)
+- [x] Wire saved recipes CRUD to Supabase `saved_recipes` table
+- [x] Wire user profile reads to Supabase `profiles` table
 - [ ] Implement `POST /spin` — single-recipe generation with preference params
 - [ ] Implement `POST /spin/weekly` — 7-day meal-plan generation
-- [ ] Implement `GET /recipes/saved`, `POST /recipes/save`, `DELETE /recipes/unsave`
-- [ ] Implement `GET /user/profile` and `PUT /user/profile`
-- [ ] Implement `GET /user/subscription`
+- [ ] Implement `PUT /user/profile` — profile updates
+- [ ] Implement `GET /user/subscription` — real subscription status
 - [ ] Add proper error responses and retry/back-off in the client
 
 ### Authentication
 
-- [ ] Integrate real auth provider (Supabase Auth, Firebase Auth, or Auth0)
-- [ ] Wire up email/password sign-up and login (currently commented out)
+- [x] Integrate Supabase Auth (`@supabase/supabase-js` + `react-native-url-polyfill`)
+- [x] Create Supabase client with AsyncStorage session persistence (`lib/supabase.ts`)
+- [x] Rewrite AuthContext to use Supabase `onAuthStateChange` listener
+- [x] Wire up email/password sign-up and sign-in on account screen
+- [x] Auto-create profile row on sign-up via database trigger
 - [ ] Wire up Apple Sign-In
 - [ ] Wire up Google Sign-In
 - [ ] Wire up Facebook Login
-- [ ] Store and refresh real JWT tokens (replace mock `loginWithSocial()`)
-- [ ] Add auth-gated screens and redirect unauthenticated users
+- [x] Auth UI — OAuth buttons (visual only, Google/Facebook/Apple)
+- [x] Auth UI — Identifier-first flow (email → detect existing/new → password)
+- [x] Auth UI — Locked Instacart & Subscription sections for unauthenticated users
+- [x] Auth UI — Post-auth redirect with pending action replay (AuthRedirectContext)
+- [x] Auth UI — Polish: friendly errors, loading states, double-tap prevention, AsyncStorage persistence
 
 ### Payments & Subscriptions
 
@@ -148,15 +155,24 @@
 ## Already Complete
 
 - [x] Design system ("Exhale") — colors, typography, Tailwind tokens
-- [x] 19 reusable UI components (`components/`)
-- [x] Animation system (Reanimated v3, 5 patterns, 60 fps)
+- [x] 20 reusable UI components (`components/`)
+- [x] Animation system (Reanimated v3, 6 patterns, 60 fps)
 - [x] Haptic feedback system (`lib/haptics.ts`)
 - [x] Settings / preferences screen with 19 dietary filters, time & calorie filters
 - [x] Preferences persistence via AsyncStorage
 - [x] React Query + React Context state management architecture
 - [x] App icon, adaptive icon, splash screen, and favicon
-- [x] `.env` and `.env.example` with feature-flag placeholders
+- [x] `.env` and `.env.example` with Supabase + feature-flag vars
 - [x] Expo Router navigation (tabs, modals, stack)
 - [x] Light/dark theme support via ThemeContext
 - [x] Toast notification component
 - [x] CLAUDE.md and README.md documentation
+- [x] Supabase Auth — email sign-up/sign-in with session persistence
+- [x] Supabase DB — `profiles` and `saved_recipes` tables with RLS
+- [x] AuthContext rewritten to use Supabase `onAuthStateChange`
+- [x] Account screen with identifier-first auth, friendly errors, loading states, post-auth redirect
+- [x] AuthRedirectContext with AsyncStorage persistence for post-auth navigation + pending actions
+- [x] Result screen heart-save redirects unauthenticated users to auth with pending save action
+- [x] LoadingDots component — animated bouncing dots for button loading states
+- [x] PrimaryButton `loading` prop — swaps label for LoadingDots, disables press
+- [x] Account screen keyboard-aware scroll — auto-scrolls to obscured inputs on focus

@@ -1,19 +1,20 @@
 import React, { createContext, useContext, useEffect, useReducer } from "react";
+import type { Session } from "@supabase/supabase-js";
 import type { User } from "@/types";
-import { getItem, setItem, removeItem, StorageKeys } from "@/lib/asyncStorage";
+import { supabase } from "@/lib/supabase";
 
 // ── State ──
 
 interface AuthState {
   user: User | null;
-  token: string | null;
+  session: Session | null;
   isLoading: boolean;
   isAuthenticated: boolean;
 }
 
 const initialState: AuthState = {
   user: null,
-  token: null,
+  session: null,
   isLoading: true,
   isAuthenticated: false,
 };
@@ -21,36 +22,27 @@ const initialState: AuthState = {
 // ── Actions ──
 
 type AuthAction =
-  | { type: "SET_USER"; payload: { user: User; token: string } }
-  | { type: "LOGOUT" }
-  | { type: "SET_LOADING"; payload: boolean }
-  | { type: "RESTORE_SESSION"; payload: { user: User; token: string } };
+  | { type: "SET_SESSION"; payload: { user: User; session: Session } }
+  | { type: "CLEAR_SESSION" }
+  | { type: "SET_LOADING"; payload: boolean };
 
 // ── Reducer ──
 
 function authReducer(state: AuthState, action: AuthAction): AuthState {
   switch (action.type) {
-    case "SET_USER":
+    case "SET_SESSION":
       return {
         ...state,
         user: action.payload.user,
-        token: action.payload.token,
+        session: action.payload.session,
         isAuthenticated: true,
         isLoading: false,
       };
-    case "RESTORE_SESSION":
-      return {
-        ...state,
-        user: action.payload.user,
-        token: action.payload.token,
-        isAuthenticated: true,
-        isLoading: false,
-      };
-    case "LOGOUT":
+    case "CLEAR_SESSION":
       return {
         ...state,
         user: null,
-        token: null,
+        session: null,
         isAuthenticated: false,
         isLoading: false,
       };
@@ -61,12 +53,30 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
   }
 }
 
+// ── Helpers ──
+
+function mapSupabaseUser(session: Session): User {
+  const su = session.user;
+  return {
+    id: su.id,
+    email: su.email ?? "",
+    displayName:
+      su.user_metadata?.full_name ??
+      su.user_metadata?.display_name ??
+      su.email?.split("@")[0],
+    avatarUrl: su.user_metadata?.avatar_url,
+    isPro: false,
+    instacartConnected: false,
+  };
+}
+
 // ── Context ──
 
 interface AuthContextValue {
   state: AuthState;
-  login: (user: User, token: string) => Promise<void>;
-  logout: () => Promise<void>;
+  signUp: (email: string, password: string) => Promise<{ error: string | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -76,38 +86,63 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // Restore session from AsyncStorage on mount
   useEffect(() => {
-    async function restoreSession() {
-      try {
-        const token = await getItem<string>(StorageKeys.AUTH_TOKEN);
-        const user = await getItem<User>(StorageKeys.USER);
-        if (token && user) {
-          dispatch({ type: "RESTORE_SESSION", payload: { user, token } });
-        } else {
-          dispatch({ type: "SET_LOADING", payload: false });
-        }
-      } catch {
+    // Get existing session on mount
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        dispatch({
+          type: "SET_SESSION",
+          payload: { user: mapSupabaseUser(session), session },
+        });
+      } else {
         dispatch({ type: "SET_LOADING", payload: false });
       }
-    }
-    restoreSession();
+    });
+
+    // Listen for auth changes (sign in, sign out, token refresh)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        dispatch({
+          type: "SET_SESSION",
+          payload: { user: mapSupabaseUser(session), session },
+        });
+      } else {
+        dispatch({ type: "CLEAR_SESSION" });
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (user: User, token: string) => {
-    await setItem(StorageKeys.AUTH_TOKEN, token);
-    await setItem(StorageKeys.USER, user);
-    dispatch({ type: "SET_USER", payload: { user, token } });
+  const signUp = async (
+    email: string,
+    password: string
+  ): Promise<{ error: string | null }> => {
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) return { error: error.message };
+    return { error: null };
   };
 
-  const logout = async () => {
-    await removeItem(StorageKeys.AUTH_TOKEN);
-    await removeItem(StorageKeys.USER);
-    dispatch({ type: "LOGOUT" });
+  const signIn = async (
+    email: string,
+    password: string
+  ): Promise<{ error: string | null }> => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) return { error: error.message };
+    return { error: null };
+  };
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ state, login, logout }}>
+    <AuthContext.Provider value={{ state, signUp, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );
