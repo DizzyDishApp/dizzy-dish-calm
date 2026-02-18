@@ -17,8 +17,9 @@
 - [x] Set up Supabase project and database (profiles + saved_recipes tables with RLS)
 - [x] Wire saved recipes CRUD to Supabase `saved_recipes` table
 - [x] Wire user profile reads to Supabase `profiles` table
-- [ ] Implement `POST /spin` — single-recipe generation with preference params
-- [ ] Implement `POST /spin/weekly` — 7-day meal-plan generation
+- [x] Integrate Spoonacular API — pool-based recipe fetch (free: `/recipes/random`, pro: `/recipes/complexSearch`) with dietary tag mapping
+- [x] Spoonacular fixture fallback — 25 hand-crafted recipes used when API key absent, quota exceeded (HTTP 402 or silent HTTP 200 empty), or network error
+- [x] Guest spin limit — 3 spins/day tracked in AsyncStorage, daily reset (`hooks/useGuestSpinLimit.ts`)
 - [ ] Implement `PUT /user/profile` — profile updates
 - [ ] Implement `GET /user/subscription` — real subscription status
 - [ ] Add proper error responses and retry/back-off in the client
@@ -71,8 +72,11 @@
 - [x] Component tests: `InputField` — rendering, input, props (5 tests)
 - [x] Integration tests: `AuthContext` provider — mount, signUp, signIn, signInWithGoogle, signOut (8 tests)
 - [x] Integration tests: `AccountScreen` — unauth/auth views, validation, phase transitions, error mapping (16 tests)
+- [x] Unit tests: Spoonacular mapper, tag builder, ingredient/time/calorie filters, emoji picker (`spoonacular.mapping.test.ts`)
+- [x] Unit tests: guest spin limit hook — increment, daily reset, limit reached (`useGuestSpinLimit.test.ts`)
+- [x] Integration tests: `useRecipePool` — pool fetch, cache fingerprint, tier switching (`useRecipePool.test.tsx`)
+- [x] Integration tests: `useSpinRecipe` / `useSpinWeeklyPlan` mutations — success, empty pool, filter mismatch (`useSpinRecipe.test.tsx`)
 - [ ] Write unit tests for utility functions (`lib/haptics.ts`, `lib/asyncStorage.ts`)
-- [ ] Write unit tests for React Query hooks (`hooks/`)
 - [ ] Write component tests for more UI (`SpinButton`, `RecipeCard`, `FilterPill`)
 - [ ] Write integration tests for spin → result → save flow
 - [ ] Add snapshot tests for design-system components
@@ -187,5 +191,9 @@
 - [x] PrimaryButton `loading` prop — swaps label for LoadingDots, disables press
 - [x] Account screen keyboard-aware scroll — auto-scrolls to obscured inputs on focus
 - [x] Google OAuth — `signInWithGoogle()` in AuthContext via Supabase OAuth + expo-web-browser, Google button wired on account screen. Supabase + Google Cloud Console configured. Blocked on Expo Go redirect handling; needs dev build (`npx expo run:android`/`run:ios`) to test end-to-end.
-- [x] Test infrastructure — `jest.setup.js`, `__tests__/test-utils.tsx`, NativeWind babel disabled in test env, 50 tests across 7 suites (auth reducer, API helpers, PrimaryButton, SocialButton, InputField, AuthContext provider, AccountScreen)
+- [x] Test infrastructure — `jest.setup.js`, `__tests__/test-utils.tsx`, NativeWind babel disabled in test env, 111 tests across 11 suites (auth reducer, API helpers, PrimaryButton, SocialButton, InputField, AuthContext provider, AccountScreen, Spoonacular mapper, guest spin limit, useRecipePool, useSpinRecipe)
 - [x] CI/CD — GitHub Actions workflow (`.github/workflows/test.yml`) runs `npm run test:ci` on push to main/feat/fix branches and PRs to main
+- [x] Spoonacular API integration — pool-based recipe fetch (`lib/spoonacular.ts`) with free/pro tier strategies, dietary tag mapping, ingredient keyword filter, calorie/time client-side filter
+- [x] Spoonacular fixture fallback — `lib/fixtures/spoonacularRecipes.ts` (25 recipes) used when API key absent, quota exceeded, or network fails; same mapper/filter pipeline as live data; graceful handling of Spoonacular's silent HTTP 200 empty-response quota behavior
+- [x] Toast error variant — `UIContext.showToast(message, "error")` renders a warm-red toast; spin `onError` handlers surface user-friendly filter-mismatch messages
+- [x] Guest spin limit — 3 free spins/day, AsyncStorage-backed, daily reset at midnight (`hooks/useGuestSpinLimit.ts`)
