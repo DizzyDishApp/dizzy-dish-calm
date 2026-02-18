@@ -142,3 +142,17 @@ jest.mock("@/lib/haptics", () => ({
     error: jest.fn(),
   },
 }));
+
+// ── Spoonacular client mock ──
+jest.mock("@/lib/spoonacular", () => ({
+  fetchRandomPool: jest.fn(),
+  fetchProPool: jest.fn(),
+  buildTagParams: jest.fn().mockReturnValue({ includeTags: "main+course", excludeTags: "" }),
+  buildPoolFingerprint: jest.fn().mockReturnValue(""),
+  mapSpoonacularRecipe: jest.fn(),
+  passesTimeFilter: jest.fn().mockReturnValue(true),
+  passesCalorieFilter: jest.fn().mockReturnValue(true),
+  passesIngredientFilter: jest.fn().mockReturnValue(true),
+  pickEmoji: jest.fn().mockReturnValue("🍲"),
+  stripHtml: jest.fn((html) => html.replace(/<[^>]+>/g, "")),
+}));

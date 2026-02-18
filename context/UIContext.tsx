@@ -5,12 +5,14 @@ import React, { createContext, useContext, useReducer } from "react";
 interface UIState {
   isSpinning: boolean;
   toastMessage: string | null;
+  toastVariant: "default" | "error" | null;
   toastVisible: boolean;
 }
 
 const initialState: UIState = {
   isSpinning: false,
   toastMessage: null,
+  toastVariant: null,
   toastVisible: false,
 };
 
@@ -18,7 +20,7 @@ const initialState: UIState = {
 
 type UIAction =
   | { type: "SET_SPINNING"; payload: boolean }
-  | { type: "SHOW_TOAST"; payload: string }
+  | { type: "SHOW_TOAST"; payload: { message: string; variant?: "default" | "error" } }
   | { type: "HIDE_TOAST" };
 
 // ── Reducer ──
@@ -28,9 +30,14 @@ function uiReducer(state: UIState, action: UIAction): UIState {
     case "SET_SPINNING":
       return { ...state, isSpinning: action.payload };
     case "SHOW_TOAST":
-      return { ...state, toastMessage: action.payload, toastVisible: true };
+      return {
+        ...state,
+        toastMessage: action.payload.message,
+        toastVariant: action.payload.variant ?? "default",
+        toastVisible: true,
+      };
     case "HIDE_TOAST":
-      return { ...state, toastMessage: null, toastVisible: false };
+      return { ...state, toastMessage: null, toastVariant: null, toastVisible: false };
     default:
       return state;
   }
@@ -41,7 +48,7 @@ function uiReducer(state: UIState, action: UIAction): UIState {
 interface UIContextValue {
   state: UIState;
   setSpinning: (spinning: boolean) => void;
-  showToast: (message: string) => void;
+  showToast: (message: string, variant?: "default" | "error") => void;
   hideToast: () => void;
 }
 
@@ -56,8 +63,8 @@ export function UIProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: "SET_SPINNING", payload: spinning });
   };
 
-  const showToast = (message: string) => {
-    dispatch({ type: "SHOW_TOAST", payload: message });
+  const showToast = (message: string, variant?: "default" | "error") => {
+    dispatch({ type: "SHOW_TOAST", payload: { message, variant } });
   };
 
   const hideToast = () => {

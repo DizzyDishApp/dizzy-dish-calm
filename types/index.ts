@@ -1,15 +1,25 @@
 // ── Recipe Types ──
 
+export interface Ingredient {
+  id: number;
+  name: string;
+  amount: number;
+  unit: string;
+  original: string;
+}
+
 export interface Recipe {
   id: string;
   name: string;
   time: string;
-  calories: string;
+  calories: string;       // "420 cal" for Pro, "—" for Guest/Free
   servings: string;
   description: string;
   tags: string[];
   emoji: string;
   imageUrl?: string;
+  ingredients?: Ingredient[];  // from extendedIngredients — required for Instacart
+  sourceUrl?: string;          // for "View Recipe" button
 }
 
 export interface WeeklyPlanDay {
@@ -80,15 +90,6 @@ export interface UserPreferences {
 }
 
 // ── API Types ──
-
-export interface SpinRequest {
-  preferences: {
-    dietary: string[];
-    time: string;
-    calories: string;
-  };
-  weekly: boolean;
-}
 
 export interface SpinResponse {
   recipe?: Recipe;

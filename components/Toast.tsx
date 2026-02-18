@@ -26,11 +26,13 @@ export function Toast() {
 
   if (!state.toastVisible || !state.toastMessage) return null;
 
+  const bgClass = state.toastVariant === "error" ? "bg-warm" : "bg-txt";
+
   return (
     <Animated.View
       entering={FadeIn.duration(200)}
       exiting={FadeOut.duration(200)}
-      className="absolute bottom-24 left-6 right-6 bg-txt rounded-card px-4 py-3 items-center z-50"
+      className={`absolute bottom-24 left-6 right-6 ${bgClass} rounded-card px-4 py-3 items-center z-50`}
       style={{
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 4 },

@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from "react";
-import { View, Text, ScrollView } from "react-native";
-import { useRouter } from "expo-router";
-import Animated, { FadeInDown, SlideInDown } from "react-native-reanimated";
+import { View, Text, ScrollView, Pressable, Linking } from "react-native";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useQueryClient } from "@tanstack/react-query";
 import { HeaderBar } from "@/components/HeaderBar";
 import { HeartButton } from "@/components/HeartButton";
 import { MetaPill } from "@/components/MetaPill";
@@ -10,47 +11,65 @@ import { TagChip } from "@/components/TagChip";
 import { ConfettiEmoji } from "@/components/ConfettiEmoji";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { SecondaryButton } from "@/components/SecondaryButton";
-import { useSpinRecipe } from "@/hooks/useSpinRecipe";
 import { useSaveRecipe, useUnsaveRecipe } from "@/hooks/useSavedRecipes";
 import { useAuth } from "@/context/AuthContext";
+import { usePreferences } from "@/context/PreferencesContext";
 import { useAuthRedirect } from "@/context/AuthRedirectContext";
 import { useUI } from "@/context/UIContext";
 import { haptic } from "@/lib/haptics";
+import { queryKeys } from "@/lib/queryKeys";
 import type { Recipe } from "@/types";
+
+const FALLBACK_RECIPE: Recipe = {
+  id: "1",
+  name: "Honey Garlic Salmon",
+  time: "25 min",
+  calories: "420 cal",
+  servings: "4 servings",
+  description:
+    "Pan-seared salmon glazed with honey, garlic, and soy sauce. Served over jasmine rice with steamed broccoli.",
+  tags: ["Gluten Free", "Under 30 Min", "High Protein"],
+  emoji: "\u{1F363}",
+};
 
 /**
  * Result screen — shown after a single recipe spin.
+ *
+ * Reads the recipe from the React Query cache using the recipeId param
+ * passed from index.tsx. The cache is pre-populated by useSpinRecipe's
+ * onSuccess handler before navigation occurs.
  *
  * Design spec:
  *  - slideUp entrance: 0.5s cubic-bezier(0.2,0.8,0.2,1)
  *  - Staggered gentleUp for content sections
  *  - Confetti emojis float up on result
  *
- * Server state: useSpinRecipe (data from last mutation), useSaveRecipe
- * Client state: local saved toggle
+ * Server state: RQ cache (recipe detail), useSaveRecipe
+ * Client state: local saved toggle, PreferencesContext (isPro for calorie upsell)
  */
 export default function ResultScreen() {
   const router = useRouter();
+  const { recipeId } = useLocalSearchParams<{ recipeId: string }>();
+  const queryClient = useQueryClient();
   const { state: auth } = useAuth();
+  const { state: prefs } = usePreferences();
   const { setSnapshot } = useAuthRedirect();
   const { setSpinning } = useUI();
-  const spinRecipe = useSpinRecipe();
   const saveMutation = useSaveRecipe();
   const unsaveMutation = useUnsaveRecipe();
   const [saved, setSaved] = useState(false);
 
-  // Use data from the last spin mutation, or fallback
-  const recipe: Recipe = spinRecipe.data ?? {
-    id: "1",
-    name: "Honey Garlic Salmon",
-    time: "25 min",
-    calories: "420 cal",
-    servings: "4 servings",
-    description:
-      "Pan-seared salmon glazed with honey, garlic, and soy sauce. Served over jasmine rice with steamed broccoli.",
-    tags: ["Gluten Free", "Under 30 Min", "High Protein"],
-    emoji: "\u{1F363}",
-  };
+  // Read the recipe from the RQ cache — pre-populated by useSpinRecipe's onSuccess
+  const cachedRecipe = recipeId
+    ? queryClient.getQueryData<Recipe>(queryKeys.recipes.detail(recipeId))
+    : undefined;
+  const recipe: Recipe = cachedRecipe ?? FALLBACK_RECIPE;
+
+  if (__DEV__) {
+    console.log('[result.tsx] recipeId from params:', recipeId);
+    console.log('[result.tsx] cachedRecipe:', cachedRecipe?.name ?? 'NOT IN CACHE (showing fallback)');
+    console.log('[result.tsx] recipe.name:', recipe.name);
+  }
 
   const handleToggleSave = useCallback(() => {
     haptic.medium();
@@ -77,12 +96,16 @@ export default function ResultScreen() {
     router.back();
   }, [router]);
 
+  const handleViewRecipe = useCallback(() => {
+    if (recipe.sourceUrl) {
+      Linking.openURL(recipe.sourceUrl);
+    }
+  }, [recipe.sourceUrl]);
+
+  const showCalorieUpsell = recipe.calories === "—" && !prefs.isPro;
+
   return (
     <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
-      <Animated.View
-        entering={SlideInDown.duration(500).springify()}
-        className="flex-1"
-      >
         {/* Header */}
         <HeaderBar
           title="tonight's pick"
@@ -94,7 +117,7 @@ export default function ResultScreen() {
         <ScrollView
           className="flex-1 px-xl"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 20 }}
+          contentContainerStyle={{ paddingBottom: 60 }}
         >
           {/* Recipe image placeholder */}
           <Animated.View
@@ -119,7 +142,17 @@ export default function ResultScreen() {
             className="flex-row flex-wrap gap-2 mt-3"
           >
             <MetaPill label={recipe.time} />
-            <MetaPill label={recipe.calories} />
+            {showCalorieUpsell ? (
+              <Pressable
+                onPress={() => router.push("/(modal)/account")}
+                accessibilityRole="button"
+                accessibilityLabel="Upgrade to Pro to see calorie information"
+              >
+                <MetaPill label="🔒 Pro" />
+              </Pressable>
+            ) : (
+              <MetaPill label={recipe.calories} />
+            )}
             <MetaPill label={recipe.servings} />
           </Animated.View>
 
@@ -152,7 +185,11 @@ export default function ResultScreen() {
           className="px-xl pb-5 pt-3 gap-2"
         >
           <PrimaryButton
-            label="Order Ingredients"
+            label={
+              recipe.ingredients?.length
+                ? `Order ${recipe.ingredients.length} Ingredients`
+                : "Order Ingredients"
+            }
             variant="green"
             onPress={() => {
               // MIGRATION NOTE: Navigate to Instacart order flow
@@ -163,9 +200,7 @@ export default function ResultScreen() {
               <SecondaryButton
                 label="View Recipe"
                 variant="cream"
-                onPress={() => {
-                  // MIGRATION NOTE: Navigate to full recipe detail
-                }}
+                onPress={handleViewRecipe}
               />
             </View>
             <View className="flex-1">
@@ -177,7 +212,6 @@ export default function ResultScreen() {
             </View>
           </View>
         </Animated.View>
-      </Animated.View>
     </SafeAreaView>
   );
 }

@@ -15,6 +15,8 @@ export const queryKeys = {
     saved: () => [...queryKeys.recipes.all, "saved"] as const,
     detail: (id: string) => [...queryKeys.recipes.all, "detail", id] as const,
     spin: () => [...queryKeys.recipes.all, "spin"] as const,
+    pool: (fingerprint: string) =>
+      [...queryKeys.recipes.all, "pool", fingerprint] as const,
   },
   weeklyPlans: {
     all: ["weeklyPlans"] as const,

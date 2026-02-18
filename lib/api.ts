@@ -1,11 +1,17 @@
 import { supabase } from "@/lib/supabase";
+import { queryKeys } from "@/lib/queryKeys";
+import { buildPoolFingerprint, passesTimeFilter, passesCalorieFilter } from "@/lib/spoonacular";
+import type { QueryClient } from "@tanstack/react-query";
 import type {
   Recipe,
   WeeklyPlan,
-  SpinRequest,
   User,
   SubscriptionPlan,
   InstacartConnectRequest,
+  DietaryFilter,
+  TimeFilter,
+  CalorieFilter,
+  SharedIngredient,
 } from "@/types";
 
 /**
@@ -13,8 +19,149 @@ import type {
  * No React Query logic here. These are called by query/mutation hooks.
  *
  * Auth and saved recipes are wired to Supabase.
- * Recipe spin endpoints are still mocked until the real API is built.
+ * Recipe spin draws from the Spoonacular pool cached in React Query.
  */
+
+// ── Draw Request ──
+
+export interface DrawRequest {
+  dietary: DietaryFilter[];
+  time: TimeFilter;
+  calories: CalorieFilter;
+  isPro: boolean;
+}
+
+// ── Pool Draw Functions ──
+
+/**
+ * Draws a single recipe from the cached Spoonacular pool.
+ * Applies client-side time + calorie filters, then picks randomly.
+ * Throws with a user-friendly message if the filtered pool is empty.
+ */
+export function drawRecipeFromPool(
+  queryClient: QueryClient,
+  request: DrawRequest
+): Recipe {
+  const fingerprint = buildPoolFingerprint(request.dietary, request.isPro);
+  const pool = queryClient.getQueryData<Recipe[]>(
+    queryKeys.recipes.pool(fingerprint)
+  );
+
+  if (!pool || pool.length === 0) {
+    throw new Error(
+      "No recipes available yet — the pool is still loading. Please try again."
+    );
+  }
+
+  const filtered = pool.filter(
+    (r) =>
+      passesTimeFilter(r, request.time) &&
+      passesCalorieFilter(r, request.calories)
+  );
+
+  if (filtered.length === 0) {
+    throw new Error(
+      "No recipes match your current filters. Try adjusting your time or calorie preferences."
+    );
+  }
+
+  return filtered[Math.floor(Math.random() * filtered.length)];
+}
+
+/**
+ * Draws 7 unique recipes from the pool and computes shared ingredients.
+ */
+export function drawWeeklyPlanFromPool(
+  queryClient: QueryClient,
+  request: DrawRequest
+): WeeklyPlan {
+  const fingerprint = buildPoolFingerprint(request.dietary, request.isPro);
+  const pool = queryClient.getQueryData<Recipe[]>(
+    queryKeys.recipes.pool(fingerprint)
+  );
+
+  if (!pool || pool.length === 0) {
+    throw new Error(
+      "No recipes available yet — the pool is still loading. Please try again."
+    );
+  }
+
+  const filtered = pool.filter(
+    (r) =>
+      passesTimeFilter(r, request.time) &&
+      passesCalorieFilter(r, request.calories)
+  );
+
+  if (filtered.length < 7) {
+    throw new Error(
+      "Not enough recipes match your filters for a 7-day plan. Try adjusting your preferences."
+    );
+  }
+
+  // Shuffle and take 7 unique recipes
+  const shuffled = [...filtered].sort(() => Math.random() - 0.5);
+  const days = shuffled.slice(0, 7);
+
+  const DAYS_OF_WEEK = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+  ];
+
+  const sharedIngredients = computeSharedIngredients(days);
+
+  return {
+    id: `wp-${Date.now()}`,
+    days: days.map((recipe, i) => ({ day: DAYS_OF_WEEK[i], recipe })),
+    sharedIngredients: sharedIngredients.shared,
+    totalItems: sharedIngredients.totalItems,
+    reducedItems: sharedIngredients.reducedItems,
+  };
+}
+
+function computeSharedIngredients(recipes: Recipe[]): {
+  shared: SharedIngredient[];
+  totalItems: number;
+  reducedItems: number;
+} {
+  const counts = new Map<string, number>();
+  let totalItems = 0;
+
+  for (const recipe of recipes) {
+    if (!recipe.ingredients) continue;
+    totalItems += recipe.ingredients.length;
+    const seen = new Set<string>();
+    for (const ing of recipe.ingredients) {
+      const key = ing.name.toLowerCase().trim();
+      if (!seen.has(key)) {
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+        seen.add(key);
+      }
+    }
+  }
+
+  const shared: SharedIngredient[] = [];
+  let savedCount = 0;
+
+  for (const [name, count] of counts.entries()) {
+    if (count >= 2) {
+      shared.push({ name: name.charAt(0).toUpperCase() + name.slice(1), count });
+      savedCount += count - 1; // each shared ingredient saves (count - 1) items
+    }
+  }
+
+  shared.sort((a, b) => b.count - a.count);
+
+  return {
+    shared,
+    totalItems,
+    reducedItems: totalItems - savedCount,
+  };
+}
 
 // ── Auth Helpers ──
 
@@ -24,172 +171,6 @@ export async function checkEmailExists(email: string): Promise<boolean> {
   });
   if (error) return false;
   return data === true;
-}
-
-// ── Mock Data (spin still uses these) ──
-
-const MOCK_RECIPES: Recipe[] = [
-  {
-    id: "1",
-    name: "Honey Garlic Salmon",
-    time: "25 min",
-    calories: "420 cal",
-    servings: "4 servings",
-    description:
-      "Pan-seared salmon glazed with honey, garlic, and soy sauce. Served over jasmine rice with steamed broccoli.",
-    tags: ["Gluten Free", "Under 30 Min", "High Protein"],
-    emoji: "\u{1F363}",
-  },
-  {
-    id: "2",
-    name: "Chicken Tikka Masala",
-    time: "40 min",
-    calories: "520 cal",
-    servings: "4 servings",
-    description:
-      "Tender chicken pieces in a creamy, spiced tomato sauce served with basmati rice and warm naan.",
-    tags: ["High Protein", "Comfort Food"],
-    emoji: "\u{1F35B}",
-  },
-  {
-    id: "3",
-    name: "Pesto Pasta",
-    time: "20 min",
-    calories: "380 cal",
-    servings: "4 servings",
-    description:
-      "Al dente pasta tossed with fresh basil pesto, cherry tomatoes, and shaved parmesan.",
-    tags: ["Vegetarian", "Under 30 Min"],
-    emoji: "\u{1F35D}",
-  },
-  {
-    id: "4",
-    name: "Black Bean Tacos",
-    time: "15 min",
-    calories: "340 cal",
-    servings: "4 servings",
-    description:
-      "Seasoned black beans with fresh pico de gallo, avocado, and lime crema on warm corn tortillas.",
-    tags: ["Vegan", "Under 30 Min", "Budget"],
-    emoji: "\u{1F32E}",
-  },
-];
-
-const MOCK_WEEKLY_PLAN: WeeklyPlan = {
-  id: "wp-1",
-  days: [
-    { day: "Monday", recipe: { ...MOCK_RECIPES[0], emoji: "\u{1F363}" } },
-    {
-      day: "Tuesday",
-      recipe: {
-        id: "5",
-        name: "Garlic Butter Shrimp Pasta",
-        time: "20 min",
-        calories: "460 cal",
-        servings: "4 servings",
-        description: "Succulent shrimp in garlic butter sauce over linguine.",
-        tags: ["Under 30 Min"],
-        emoji: "\u{1F364}",
-      },
-    },
-    {
-      day: "Wednesday",
-      recipe: {
-        id: "6",
-        name: "Chicken Stir Fry",
-        time: "25 min",
-        calories: "390 cal",
-        servings: "4 servings",
-        description: "Crispy chicken with colorful vegetables in savory sauce.",
-        tags: ["Under 30 Min", "High Protein"],
-        emoji: "\u{1F357}",
-      },
-    },
-    {
-      day: "Thursday",
-      recipe: {
-        id: "7",
-        name: "Garlic Chicken Tacos",
-        time: "20 min",
-        calories: "410 cal",
-        servings: "4 servings",
-        description: "Garlic-marinated chicken with fresh toppings on flour tortillas.",
-        tags: ["Under 30 Min"],
-        emoji: "\u{1F32E}",
-      },
-    },
-    {
-      day: "Friday",
-      recipe: {
-        id: "8",
-        name: "Salmon Rice Bowls",
-        time: "15 min",
-        calories: "380 cal",
-        servings: "4 servings",
-        description: "Flaked salmon over seasoned rice with cucumber and avocado.",
-        tags: ["Under 30 Min", "Gluten Free"],
-        emoji: "\u{1F371}",
-      },
-    },
-    {
-      day: "Saturday",
-      recipe: {
-        id: "9",
-        name: "Honey Soy Chicken",
-        time: "35 min",
-        calories: "450 cal",
-        servings: "4 servings",
-        description: "Sticky honey soy glazed chicken thighs with steamed vegetables.",
-        tags: ["High Protein"],
-        emoji: "\u{1F357}",
-      },
-    },
-    {
-      day: "Sunday",
-      recipe: {
-        id: "10",
-        name: "Shrimp Fried Rice",
-        time: "20 min",
-        calories: "410 cal",
-        servings: "4 servings",
-        description: "Quick fried rice with plump shrimp, eggs, and mixed vegetables.",
-        tags: ["Under 30 Min"],
-        emoji: "\u{1F35A}",
-      },
-    },
-  ],
-  sharedIngredients: [
-    { name: "Garlic", count: 7 },
-    { name: "Soy Sauce", count: 5 },
-    { name: "Honey", count: 3 },
-    { name: "Jasmine Rice", count: 4 },
-    { name: "Chicken", count: 3 },
-  ],
-  totalItems: 42,
-  reducedItems: 28,
-};
-
-// ── Recipe Fetchers (still mocked) ──
-
-export async function spinRecipe(_request: SpinRequest): Promise<Recipe> {
-  // MIGRATION NOTE: Replace with real API call when recipe generation API is built
-  await new Promise((resolve) => setTimeout(resolve, 800));
-  const random = MOCK_RECIPES[Math.floor(Math.random() * MOCK_RECIPES.length)];
-  return random;
-}
-
-export async function spinWeeklyPlan(
-  _request: SpinRequest
-): Promise<WeeklyPlan> {
-  // MIGRATION NOTE: Replace with real API call
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  return MOCK_WEEKLY_PLAN;
-}
-
-export async function fetchRecipeDetail(id: string): Promise<Recipe> {
-  // MIGRATION NOTE: Replace with real API call
-  await new Promise((resolve) => setTimeout(resolve, 200));
-  return MOCK_RECIPES.find((r) => r.id === id) ?? MOCK_RECIPES[0];
 }
 
 // ── Saved Recipes (Supabase) ──

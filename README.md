@@ -20,6 +20,7 @@ Results come with cook time, calories, dietary tags, and a one-tap path to order
 - **Save Collection** — Heart any result to build your personal recipe book
 - **Instacart Integration** — Connect your account to order ingredients directly from a result
 - **Haptic Feedback** — Every interaction has purpose-matched haptics (heavy for the spin, light for navigation, success buzz when a result lands)
+- **Offline-ready fixture pool** — The app works without a Spoonacular API key using a curated set of 25 hand-crafted recipes
 
 ### Who it's for
 
@@ -81,6 +82,40 @@ All animations use React Native Reanimated v3 (UI thread, 60fps):
 ### Design System Source
 
 The full design system spec is defined in an SVG file that documents every color, typography scale, spacing value, border radius, component variant, shadow level, animation, and haptic pattern. It lives alongside this repo as the source of truth for the visual language.
+
+---
+
+## Recipe Data
+
+Recipes come from the [Spoonacular API](https://spoonacular.com/food-api) and are fetched as a pool once per session, then drawn from locally at spin time — no API call happens when you tap the button.
+
+### Tier strategy
+
+| User tier | Endpoint | Calorie data |
+|---|---|---|
+| Guest / Free | `/recipes/random` | Not available (shows "—") |
+| Pro | `/recipes/complexSearch` | Full nutrition included |
+
+### Fixture fallback
+
+The app ships with **25 hand-crafted fallback recipes** (`lib/fixtures/spoonacularRecipes.ts`) that run through the exact same mapper, ingredient filter, and tag-builder pipeline as live API data. They are used automatically when:
+
+- `EXPO_PUBLIC_SPOONACULAR_API_KEY` is not set
+- The API returns HTTP 402 (quota exceeded)
+- The API returns HTTP 200 with 0 results (Spoonacular's silent quota behaviour — it doesn't always send a proper 402)
+- A network error prevents reaching the API
+
+This means the spin button always works during development, even without a key or when the daily free quota (150 points) is exhausted.
+
+### Setting up the API key
+
+1. Create a free account at [spoonacular.com](https://spoonacular.com/food-api)
+2. Copy your API key from the dashboard
+3. Add it to your `.env`:
+   ```
+   EXPO_PUBLIC_SPOONACULAR_API_KEY=your_key_here
+   ```
+4. Set IP/referer restrictions in the Spoonacular dashboard — the key is visible in the JS bundle
 
 ---
 
@@ -324,10 +359,13 @@ context/                    React Context modules (client state)
 providers/                  Provider composition
 hooks/                      React Query hooks (server state)
 lib/                        API fetchers, query config, helpers
+  spoonacular.ts            Spoonacular client — types, mapper, pool fetchers, fixture fallback
+  fixtures/
+    spoonacularRecipes.ts   25 hand-crafted fallback recipes (raw SpoonacularRecipe format)
 constants/                  Colors, typography tokens
 types/                      Shared TypeScript interfaces
 assets/                     Fonts, images
-__tests__/                  Test files (Jest + React Testing Library)
+__tests__/                  Test files (Jest + React Testing Library) — 111 tests, 11 suites
 .github/workflows/          CI workflows (GitHub Actions)
 ```
 
@@ -385,7 +423,13 @@ __tests__/
   InputField.test.tsx             ← Component tests
   AuthContext.test.tsx            ← Provider integration tests (renderHook)
   AccountScreen.test.tsx          ← Screen integration tests (full render)
+  spoonacular.mapping.test.ts     ← Spoonacular mapper, tag builder, filters, emoji picker
+  useGuestSpinLimit.test.ts       ← Guest spin limit: increment, daily reset, limit reached
+  useRecipePool.test.tsx          ← Pool fetch, cache fingerprint, tier switching
+  useSpinRecipe.test.tsx          ← Spin mutations: success, empty pool, filter mismatch
 ```
+
+111 tests passing across 11 suites. Run `npm test` to verify.
 
 ### Writing New Tests
 
