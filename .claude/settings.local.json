@@ -5,7 +5,19 @@
       "Bash(npm install:*)",
       "Bash(npx tsc:*)",
       "Bash(python3:*)",
-      "Bash(npx jest:*)"
+      "Bash(npx jest:*)",
+      "WebFetch(domain:spoonacular.com)",
+      "Bash(git checkout:*)",
+      "Bash(npm run test:ci:*)",
+      "Bash(ls:*)",
+      "mcp__figma__create_design_system_rules",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr create:*)",
+      "Bash(brew list:*)",
+      "Bash(npx expo install:*)",
+      "Bash(npm test:*)"
     ]
   }
 }

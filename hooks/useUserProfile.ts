@@ -82,6 +82,7 @@ export function useRevenueCatInfo() {
 
   return {
     isPro,
+    customerInfo: customerInfoQuery.data ?? null,
     packages,
     isLoading: customerInfoQuery.isLoading || offeringsQuery.isLoading,
     purchase,
