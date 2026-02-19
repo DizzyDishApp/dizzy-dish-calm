@@ -119,6 +119,49 @@ This means the spin button always works during development, even without a key o
 
 ---
 
+## Payments & Subscriptions
+
+DizzyDish uses **RevenueCat** for in-app purchases (iOS StoreKit + Google Play Billing).
+
+### Subscription Tiers
+
+| Tier | Price | Features |
+|---|---|---|
+| Free / Guest | $0 | Unlimited spins, no nutrition, preferences reset each spin |
+| Pro Monthly | $2.99/month | Calorie + nutrition info, persistent preferences, Pro recipe pool |
+| Pro Annual | $14.99/year | Same as monthly, ~58% savings |
+
+### How it works in the code
+
+- `lib/revenueCat.ts` — SDK wrapper (init, purchase, restore, identity sync)
+- `hooks/useUserProfile.ts` → `useRevenueCatInfo()` — queries RC, exposes `purchase` + `restore` mutations
+- On purchase/restore: writes to `profiles.is_pro` in Supabase, invalidates the user profile React Query cache
+- `User.isPro` from `useUserProfile()` is the **only** source of truth for Pro feature gating — never in context
+- `app/(modal)/paywall.tsx` — paywall screen (navigated to from calorie upsell in result screen and from settings)
+
+### Environment variables
+
+```
+EXPO_PUBLIC_REVENUECAT_IOS_KEY=appl_...
+EXPO_PUBLIC_REVENUECAT_ANDROID_KEY=goog_...
+```
+
+Leave unset during development — the paywall will show static pricing and the SDK silently no-ops. The fixture pool still serves Pro recipes when a user's profile has `is_pro = true` in Supabase.
+
+### Important: requires a dev build
+
+`react-native-purchases` has native code and cannot run in Expo Go. Use `npx expo run:ios` or `npx expo run:android` to test real purchase flows.
+
+### Sandbox testing
+
+- **iOS:** Create a StoreKit Configuration file (`.storekit`) in Xcode and point your scheme at it — the simulator processes purchases instantly
+- **Android:** Add your Google account as a License Tester in Play Console
+- RevenueCat dashboard → **Sandbox** tab shows all test transactions
+
+See `lib/CLAUDE.md` → RevenueCat Integration for full setup instructions including App Store Connect and Google Play Console product IDs.
+
+---
+
 ## Getting Started
 
 ### Prerequisites

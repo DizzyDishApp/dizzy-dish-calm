@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { View, Text, ScrollView, Platform, Pressable, TextInput, Keyboard, Dimensions } from "react-native";
+import { View, Text, ScrollView, Platform, Pressable, TextInput, Keyboard, Dimensions, Linking } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
@@ -13,7 +13,7 @@ import { InputField } from "@/components/InputField";
 import { useAuth } from "@/context/AuthContext";
 import { useAuthRedirect } from "@/context/AuthRedirectContext";
 import { useUI } from "@/context/UIContext";
-import { useSubscription } from "@/hooks/useUserProfile";
+import { useUserProfile, useRevenueCatInfo } from "@/hooks/useUserProfile";
 import { useSaveRecipe } from "@/hooks/useSavedRecipes";
 import { checkEmailExists } from "@/lib/api";
 import { Colors } from "@/constants/colors";
@@ -59,8 +59,29 @@ export default function AccountScreen() {
   const { state: auth, signUp, signIn, signInWithGoogle, signOut } = useAuth();
   const { consumeSnapshot } = useAuthRedirect();
   const { showToast } = useUI();
-  const { data: subscription } = useSubscription();
+  const { data: userProfile } = useUserProfile();
+  const { customerInfo } = useRevenueCatInfo();
   const saveMutation = useSaveRecipe();
+
+  // ── Subscription display ──
+  const isPro = userProfile?.isPro ?? false;
+  const proEntitlement = customerInfo?.entitlements?.active?.["pro_access"];
+  const productId = proEntitlement?.productIdentifier ?? "";
+  const planName = productId.includes("annual") ? "Pro Annual" : isPro ? "Pro Monthly" : "Pro Plan";
+  const expirationDate = proEntitlement?.expirationDate ?? null;
+  const willRenew = proEntitlement?.willRenew ?? true;
+  const managementURL = customerInfo?.managementURL ?? null;
+  const renewalText = expirationDate
+    ? (() => {
+        const date = new Date(expirationDate);
+        const formatted = date.toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        });
+        return willRenew ? `Renews ${formatted}` : `Expires ${formatted}`;
+      })()
+    : null;
 
   // Track the auth state at mount time so we only redirect on fresh sign-ins
   const wasAuthenticatedOnMount = useRef(auth.isAuthenticated);
@@ -273,23 +294,61 @@ export default function AccountScreen() {
             <Text className="font-body-bold text-[11px] text-txt-light tracking-widest uppercase mb-3">
               Subscription
             </Text>
-            <View className="flex-row justify-between items-center p-4 rounded-card bg-card border-[1.5px] border-border">
-              <View>
-                <Text className="font-body-semibold text-[13px] text-txt">
-                  {subscription?.name ?? "Free Plan"}
-                </Text>
-                <Text className="font-body text-[11px] text-txt-light mt-0.5">
-                  {subscription?.price ?? "$0/month"}
-                </Text>
+            {isPro ? (
+              <View className="p-4 rounded-card bg-card border-[1.5px] border-border">
+                <View className="flex-row items-center justify-between mb-1">
+                  <Text className="font-body-semibold text-[13px] text-txt">
+                    {planName}
+                  </Text>
+                  <View className="bg-warm px-2.5 py-0.5 rounded-full">
+                    <Text className="font-body-bold text-[10px] text-white uppercase tracking-wider">
+                      Pro
+                    </Text>
+                  </View>
+                </View>
+                {renewalText ? (
+                  <Text className="font-body text-[11px] text-txt-light mt-0.5 mb-3">
+                    {renewalText}
+                  </Text>
+                ) : (
+                  <View className="mb-3" />
+                )}
+                <View className="flex-row gap-2">
+                  <View className="flex-1">
+                    <SecondaryButton
+                      label="Change Plan"
+                      variant="warmPale"
+                      onPress={() => router.push("/(modal)/paywall" as any)}
+                    />
+                  </View>
+                  <View className="flex-1">
+                    <SecondaryButton
+                      label="Manage"
+                      variant="ghost"
+                      onPress={() => {
+                        if (managementURL) Linking.openURL(managementURL);
+                      }}
+                      accessibilityLabel="Manage subscription in App Store or Play Store"
+                    />
+                  </View>
+                </View>
               </View>
-              <SecondaryButton
-                label="Manage"
-                variant="warmPale"
-                onPress={() => {
-                  // MIGRATION NOTE: Navigate to subscription management
-                }}
-              />
-            </View>
+            ) : (
+              <View className="p-4 rounded-card bg-card border-[1.5px] border-border">
+                <Text className="font-body-semibold text-[13px] text-txt mb-0.5">
+                  Free Plan
+                </Text>
+                <Text className="font-body text-[11px] text-txt-soft leading-relaxed mt-0.5 mb-3">
+                  Upgrade to unlock nutrition data and more.
+                </Text>
+                <PrimaryButton
+                  label="UPGRADE TO PRO"
+                  variant="warm"
+                  bordered
+                  onPress={() => router.push("/(modal)/paywall" as any)}
+                />
+              </View>
+            )}
           </Animated.View>
 
           {/* Sign Out */}
@@ -542,32 +601,27 @@ export default function AccountScreen() {
             entering={FadeInDown.delay(500).duration(300).springify()}
             className="border-t border-border pt-5 mt-6"
           >
+            <Text className="font-body-bold text-[11px] text-txt-light tracking-widest uppercase mb-3">
+              Subscription
+            </Text>
             <Pressable
-              onPress={() => showToast("Create an account to access premium features")}
-              style={{ opacity: 0.45 }}
+              onPress={() => router.push("/(modal)/paywall" as any)}
+              className="p-4 rounded-card bg-card border-[1.5px] border-border"
               accessibilityRole="button"
-              accessibilityLabel="Subscription — sign in required"
+              accessibilityLabel="View Pro subscription plans"
             >
-              <Text className="font-body-bold text-[11px] text-txt-light tracking-widest uppercase mb-3">
-                Subscription
+              <Text className="font-body-semibold text-[13px] text-txt mb-0.5">
+                Dizzy Dish Pro
               </Text>
-              <View className="p-4 rounded-card bg-card border-[1.5px] border-border">
-                <Text className="font-body-semibold text-[13px] text-txt">
-                  Premium Features
+              <Text className="font-body text-[11px] text-txt-soft leading-relaxed mt-0.5 mb-3">
+                Nutrition data, persistent preferences, and a curated Pro recipe pool.
+              </Text>
+              <View className="flex-row items-center justify-center py-2.5 rounded-btn bg-warm gap-2">
+                <Ionicons name="star" size={13} color="white" />
+                <Text className="font-body-bold text-[13px] text-white uppercase tracking-wider">
+                  View Plans
                 </Text>
-                <Text className="font-body text-[11px] text-txt-soft leading-relaxed mt-1.5">
-                  Unlock unlimited spins, weekly meal plans, and advanced dietary filters.
-                </Text>
-                <View className="flex-row items-center justify-center mt-3 py-2.5 rounded-btn bg-warm gap-2">
-                  <Ionicons name="lock-closed" size={13} color="white" />
-                  <Text className="font-body-bold text-[13px] text-white uppercase tracking-wider">
-                    Unlock Pro
-                  </Text>
-                </View>
               </View>
-              <Text className="font-body text-[10px] text-txt-light text-center mt-2">
-                Sign in to unlock
-              </Text>
             </Pressable>
           </Animated.View>
         </ScrollView>

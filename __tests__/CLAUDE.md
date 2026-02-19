@@ -27,6 +27,8 @@ npm test -- --testPathPattern=MyThing   # Run a single file
 - `@react-native-async-storage/async-storage` (built-in jest mock)
 - `@/lib/supabase` (full auth + DB mock with jest.fn() on all methods)
 - `@/lib/haptics` (all haptic helpers as jest.fn())
+- `react-native-purchases` (native SDK mock — configure, getCustomerInfo, getOfferings, purchasePackage, restorePurchases, logIn, logOut)
+- `@/lib/revenueCat` (module mock — all functions as jest.fn(); `isProEntitlement` returns false; `getCustomerInfo` returns null)
 
 **`__tests__/test-utils.tsx`** — Shared helpers (excluded from test runs via `testPathIgnorePatterns`):
 - `createTestQueryClient()` — QueryClient with retries disabled and gcTime 0
@@ -81,6 +83,24 @@ jest.mock("@/context/AuthContext", () => ({
   useAuth: () => ({ state: mockState, signIn: jest.fn() }),
 }));
 ```
+
+## Mocking Pro status in hook/screen tests
+`isPro` is now sourced from `useUserProfile()`, not `PreferencesContext`. To test Pro behavior:
+
+```tsx
+let mockIsUserPro = false;
+
+jest.mock("@/hooks/useUserProfile", () => ({
+  useUserProfile: () => ({ data: { isPro: mockIsUserPro } }),
+  useSubscription: jest.fn(),
+  useRevenueCatInfo: jest.fn(),
+}));
+
+// In test:
+mockIsUserPro = true;
+```
+
+See `useRecipePool.test.tsx` for a complete example.
 
 ## Mocking React Query mutations
 In mutation tests, `setQueryData` spy pattern is reliable; `qc.getQueryData` after `waitFor(isSuccess)` can be flaky with React Query v5.

@@ -28,6 +28,8 @@ export const queryKeys = {
     all: ["user"] as const,
     profile: () => [...queryKeys.user.all, "profile"] as const,
     subscription: () => [...queryKeys.user.all, "subscription"] as const,
+    customerInfo: () => [...queryKeys.user.all, "customerInfo"] as const,
+    offerings: () => [...queryKeys.user.all, "offerings"] as const,
   },
   instacart: {
     all: ["instacart"] as const,

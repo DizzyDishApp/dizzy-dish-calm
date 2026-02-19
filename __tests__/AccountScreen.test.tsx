@@ -48,6 +48,14 @@ jest.mock("@/context/UIContext", () => ({
 jest.mock("@/hooks/useUserProfile", () => ({
   useSubscription: () => ({ data: { name: "Free Plan", price: "$0/month" } }),
   useUserProfile: () => ({ data: null }),
+  useRevenueCatInfo: () => ({
+    customerInfo: null,
+    isPro: false,
+    packages: [],
+    isLoading: false,
+    purchase: { mutate: jest.fn(), isPending: false },
+    restore: { mutate: jest.fn(), isPending: false },
+  }),
 }));
 
 jest.mock("@/hooks/useSavedRecipes", () => ({

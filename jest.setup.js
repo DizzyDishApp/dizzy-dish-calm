@@ -143,6 +143,47 @@ jest.mock("@/lib/haptics", () => ({
   },
 }));
 
+// ── react-native-purchases mock ──
+jest.mock("react-native-purchases", () => ({
+  default: {
+    configure: jest.fn(),
+    getCustomerInfo: jest.fn().mockResolvedValue({
+      entitlements: { active: {} },
+      activeSubscriptions: [],
+    }),
+    getOfferings: jest.fn().mockResolvedValue({
+      current: { availablePackages: [] },
+    }),
+    purchasePackage: jest.fn().mockResolvedValue({
+      customerInfo: { entitlements: { active: {} }, activeSubscriptions: [] },
+    }),
+    restorePurchases: jest.fn().mockResolvedValue({
+      entitlements: { active: {} },
+      activeSubscriptions: [],
+    }),
+    logIn: jest.fn().mockResolvedValue({}),
+    logOut: jest.fn().mockResolvedValue({}),
+  },
+  PACKAGE_TYPE: {
+    MONTHLY: "MONTHLY",
+    ANNUAL: "ANNUAL",
+    LIFETIME: "LIFETIME",
+  },
+}));
+
+// ── RevenueCat client mock ──
+jest.mock("@/lib/revenueCat", () => ({
+  initRevenueCat: jest.fn(),
+  getCustomerInfo: jest.fn().mockResolvedValue(null),
+  getOfferings: jest.fn().mockResolvedValue(null),
+  purchasePackage: jest.fn(),
+  restorePurchases: jest.fn().mockResolvedValue(null),
+  logInRevenueCat: jest.fn().mockResolvedValue(undefined),
+  logOutRevenueCat: jest.fn().mockResolvedValue(undefined),
+  isProEntitlement: jest.fn().mockReturnValue(false),
+  isRevenueCatAvailable: jest.fn().mockReturnValue(false),
+}));
+
 // ── Spoonacular client mock ──
 jest.mock("@/lib/spoonacular", () => ({
   fetchRandomPool: jest.fn(),
