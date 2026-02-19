@@ -30,13 +30,7 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-asset",
-      [
-        "react-native-purchases",
-        {
-          "androidApiKey": "$REVENUECAT_ANDROID_KEY"
-        }
-      ]
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true

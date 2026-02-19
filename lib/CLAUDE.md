@@ -172,7 +172,7 @@ Keys are omitted → `initRevenueCat()` is a no-op → `getCustomerInfo()` retur
 
 **`logOutRevenueCat()` on anonymous users throws** — The RevenueCat SDK throws if `logOut()` is called when the current identity is already anonymous. The wrapper in `lib/revenueCat.ts` silently swallows this error.
 
-**`app.json` plugin key is a placeholder** — `$REVENUECAT_ANDROID_KEY` in `app.json` is a placeholder string. Replace it with the actual key value (or use EAS environment variables) before running `eas build`.
+**`app.json` has no RevenueCat plugin** — `react-native-purchases` does not ship an Expo config plugin (`app.plugin.js`). The plugin entry has been removed from `app.json`. When doing `expo prebuild` or `eas build`, the native Google Play Billing dependency is added automatically by the package's build.gradle; no manual plugin config is needed.
 
 ---
 
