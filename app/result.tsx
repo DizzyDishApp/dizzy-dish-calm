@@ -13,8 +13,8 @@ import { PrimaryButton } from "@/components/PrimaryButton";
 import { SecondaryButton } from "@/components/SecondaryButton";
 import { useSaveRecipe, useUnsaveRecipe } from "@/hooks/useSavedRecipes";
 import { useAuth } from "@/context/AuthContext";
-import { usePreferences } from "@/context/PreferencesContext";
 import { useAuthRedirect } from "@/context/AuthRedirectContext";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import { useUI } from "@/context/UIContext";
 import { haptic } from "@/lib/haptics";
 import { queryKeys } from "@/lib/queryKeys";
@@ -52,7 +52,7 @@ export default function ResultScreen() {
   const { recipeId } = useLocalSearchParams<{ recipeId: string }>();
   const queryClient = useQueryClient();
   const { state: auth } = useAuth();
-  const { state: prefs } = usePreferences();
+  const { data: userProfile } = useUserProfile();
   const { setSnapshot } = useAuthRedirect();
   const { setSpinning } = useUI();
   const saveMutation = useSaveRecipe();
@@ -102,7 +102,7 @@ export default function ResultScreen() {
     }
   }, [recipe.sourceUrl]);
 
-  const showCalorieUpsell = recipe.calories === "—" && !prefs.isPro;
+  const showCalorieUpsell = recipe.calories === "—" && !(userProfile?.isPro ?? false);
 
   return (
     <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
@@ -144,7 +144,8 @@ export default function ResultScreen() {
             <MetaPill label={recipe.time} />
             {showCalorieUpsell ? (
               <Pressable
-                onPress={() => router.push("/(modal)/account")}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                onPress={() => router.push("/(modal)/paywall" as any)}
                 accessibilityRole="button"
                 accessibilityLabel="Upgrade to Pro to see calorie information"
               >

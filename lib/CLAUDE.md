@@ -95,8 +95,84 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 | Social auth (Apple/Facebook) | Not yet wired |
 | Recipe spin | Spoonacular pool draw; fixture fallback |
 | Weekly plan spin | Spoonacular pool draw; fixture fallback |
-| Subscription / payments | Mocked (RevenueCat planned) |
+| Subscription / payments | RevenueCat SDK (`lib/revenueCat.ts`) |
 | Instacart | Mocked |
+
+---
+
+## RevenueCat Integration
+
+### Architecture
+```
+lib/revenueCat.ts           → RevenueCat client: init, customerInfo, offerings, purchase, restore, identity sync
+lib/api.ts                  → updateUserProStatus(isPro) — writes profiles.is_pro after purchase/restore
+hooks/useUserProfile.ts     → useRevenueCatInfo() — queries RC, exposes purchase/restore mutations
+context/AuthContext.tsx     → logInRevenueCat / logOutRevenueCat on onAuthStateChange
+app/(modal)/paywall.tsx     → Paywall screen (feature list, monthly/annual toggle, purchase + restore)
+app/(modal)/settings.tsx    → Shows "Pro Active" or "Upgrade to Pro →" based on User.isPro
+app/result.tsx              → Calorie upsell navigates to paywall when recipe.calories === "—"
+```
+
+### Pro Status Flow
+```
+RevenueCat CustomerInfo
+  ↓ (on purchase / restore / app foreground)
+updateUserProStatus(isPro) in lib/api.ts
+  ↓
+Supabase profiles.is_pro updated
+  ↓
+queryClient.invalidateQueries(queryKeys.user.profile)
+  ↓
+useUserProfile() refetches → User.isPro = true
+  ↓
+useRecipePool reads User.isPro → fetchProPool (with nutrition)
+```
+
+**Critical rule:** `User.isPro` from `useUserProfile()` is the **only** source of truth for Pro feature gating. It is NOT in `PreferencesContext`. This prevents free users from self-upgrading.
+
+### Products & Entitlement
+| Product ID (iOS) | Product ID (Android) | Price | Type |
+|---|---|---|---|
+| `com.dizzydish.pro.monthly` | `pro_monthly` | $2.99/month | Auto-Renewable Subscription |
+| `com.dizzydish.pro.annual` | `pro_annual` | $14.99/year | Auto-Renewable Subscription |
+
+RevenueCat entitlement ID: **`pro_access`** (both products attached)
+RevenueCat offering ID: **`default`** (monthly + annual packages)
+
+### lib/revenueCat.ts API
+| Function | Purpose |
+|---|---|
+| `initRevenueCat()` | Configure SDK at app startup. No-op if no key set. |
+| `getCustomerInfo()` | Returns `CustomerInfo \| null` (null = RC unavailable) |
+| `getOfferings()` | Returns `PurchasesOfferings \| null` |
+| `purchasePackage(pkg)` | Triggers IAP sheet; returns `CustomerInfo` on success |
+| `restorePurchases()` | Restores prior transactions; returns `CustomerInfo \| null` |
+| `logInRevenueCat(userId)` | Links Supabase user ID to RC identity |
+| `logOutRevenueCat()` | Resets to anonymous identity |
+| `isProEntitlement(info)` | Returns `true` if `pro_access` entitlement is active |
+
+All functions use dynamic `require()` with try/catch — safe in Expo Go and in tests (no native crash).
+
+### Environment Variables
+```
+EXPO_PUBLIC_REVENUECAT_IOS_KEY=appl_...
+EXPO_PUBLIC_REVENUECAT_ANDROID_KEY=goog_...
+```
+
+Keys are omitted → `initRevenueCat()` is a no-op → `getCustomerInfo()` returns null → `User.isPro` stays false (free tier). The fixture fallback pool works correctly without any RC key.
+
+### Sandbox Testing (no real money)
+- **iOS:** Create a StoreKit Configuration file (`.storekit`) in Xcode. Point your scheme at it. iOS Simulator processes sandbox purchases instantly.
+- **Android:** Add your Google account as a License Tester in Play Console. Sandbox purchases work on a real device.
+- RevenueCat dashboard → **Sandbox** tab shows all test transactions.
+
+### Pitfalls
+
+**RevenueCat requires a dev build** — `react-native-purchases` has native code. It cannot run in Expo Go. Use `npx expo run:ios` / `run:android` to test real purchases. Fixture pool + `User.isPro = false` work correctly in Expo Go without the SDK.
+
+**`logOutRevenueCat()` on anonymous users throws** — The RevenueCat SDK throws if `logOut()` is called when the current identity is already anonymous. The wrapper in `lib/revenueCat.ts` silently swallows this error.
+
+**`app.json` plugin key is a placeholder** — `$REVENUECAT_ANDROID_KEY` in `app.json` is a placeholder string. Replace it with the actual key value (or use EAS environment variables) before running `eas build`.
 
 ---
 

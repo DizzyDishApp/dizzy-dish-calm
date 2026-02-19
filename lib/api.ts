@@ -248,13 +248,25 @@ export async function fetchUserProfile(): Promise<User> {
 }
 
 export async function fetchSubscription(): Promise<SubscriptionPlan> {
-  // MIGRATION NOTE: Replace with RevenueCat integration
-  return {
-    id: "plan-free",
-    name: "Free Plan",
-    price: "$0/month",
-    isActive: true,
-  };
+  const { getCustomerInfo, isProEntitlement } = await import("@/lib/revenueCat");
+  const customerInfo = await getCustomerInfo();
+  if (isProEntitlement(customerInfo)) {
+    return { id: "plan-pro", name: "Pro", price: "", isActive: true };
+  }
+  return { id: "plan-free", name: "Free Plan", price: "$0/month", isActive: true };
+}
+
+/**
+ * Writes the user's Pro status to Supabase profiles.
+ * Called after a successful RevenueCat purchase or restore.
+ */
+export async function updateUserProStatus(isPro: boolean): Promise<void> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return;
+  await supabase
+    .from("profiles")
+    .update({ is_pro: isPro })
+    .eq("id", session.user.id);
 }
 
 // ── Instacart Fetchers (still mocked) ──

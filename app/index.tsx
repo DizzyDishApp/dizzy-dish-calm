@@ -10,6 +10,7 @@ import { Avatar } from "@/components/Avatar";
 import { GearButton } from "@/components/GearButton";
 import { useAuth } from "@/context/AuthContext";
 import { usePreferences } from "@/context/PreferencesContext";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import { useUI } from "@/context/UIContext";
 import { useAuthRedirect } from "@/context/AuthRedirectContext";
 import { useSpinRecipe, useSpinWeeklyPlan } from "@/hooks/useSpinRecipe";
@@ -32,6 +33,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { state: prefs, setWeeklyMode } = usePreferences();
   const { state: auth } = useAuth();
+  const { data: userProfile } = useUserProfile();
   const { state: ui, setSpinning, showToast } = useUI();
   const { setSnapshot } = useAuthRedirect();
   const spinRecipe = useSpinRecipe();
@@ -54,7 +56,7 @@ export default function HomeScreen() {
     dietary: Array.from(prefs.dietary),
     time: prefs.time,
     calories: prefs.calories,
-    isPro: prefs.isPro,
+    isPro: userProfile?.isPro ?? false,
   };
 
   const handleSpin = useCallback(() => {

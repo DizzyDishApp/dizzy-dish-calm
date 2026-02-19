@@ -13,11 +13,28 @@ app/*.tsx           → Screen components that consume hooks
 
 All query hooks live in `hooks/` and are named `use[Entity][Action].ts`:
 - `useSpinRecipe.ts` — `useSpinRecipe()`, `useSpinWeeklyPlan()`
-- `useRecipePool.ts` — `useRecipePool()` (Spoonacular pool, tier-aware, 30 min stale time)
+- `useRecipePool.ts` — `useRecipePool()` (Spoonacular pool, tier-aware, 30 min stale time; reads `isPro` from `useUserProfile`)
 - `useGuestSpinLimit.ts` — guest spin tracking (3 spins/day, AsyncStorage, daily reset)
 - `useSavedRecipes.ts` — `useSavedRecipes()`, `useSaveRecipe()`, `useUnsaveRecipe()`
-- `useUserProfile.ts` — `useUserProfile()`, `useSubscription()`
+- `useUserProfile.ts` — `useUserProfile()`, `useSubscription()`, `useRevenueCatInfo()`
 - `useInstacart.ts` — `useConnectInstacart()`
+
+### useRevenueCatInfo()
+Queries RevenueCat for live entitlement + available packages. Exposes `purchase` and `restore` mutations that call `updateUserProStatus` and invalidate the user profile cache on success.
+
+```ts
+const { isPro, packages, isLoading, purchase, restore } = useRevenueCatInfo();
+
+// Purchase a package
+purchase.mutate(selectedPackage);
+
+// Restore prior purchases
+restore.mutate();
+```
+
+- `isPro` — live RevenueCat entitlement check (use `useUserProfile().data?.isPro` for feature gating)
+- `packages` — `PurchasesPackage[]` from the `default` offering (empty array in Expo Go)
+- Query keys: `queryKeys.user.customerInfo()` (5 min stale), `queryKeys.user.offerings()` (1 hr stale)
 
 ## Adding a new query (step-by-step)
 

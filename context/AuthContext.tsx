@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useReducer } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { User } from "@/types";
 import { supabase } from "@/lib/supabase";
+import { logInRevenueCat, logOutRevenueCat } from "@/lib/revenueCat";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 
@@ -111,8 +112,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           type: "SET_SESSION",
           payload: { user: mapSupabaseUser(session), session },
         });
+        logInRevenueCat(session.user.id);
       } else {
         dispatch({ type: "CLEAR_SESSION" });
+        logOutRevenueCat();
       }
     });
 

@@ -42,12 +42,23 @@
 
 ### Payments & Subscriptions
 
-- [ ] Add `react-native-purchases` (RevenueCat) dependency
-- [ ] Configure RevenueCat project, entitlements, and offerings
-- [ ] Build paywall / upgrade screen
-- [ ] Gate Pro features (weekly spin, advanced filters) behind entitlement checks
-- [ ] Verify subscription status server-side
-- [ ] Handle restore-purchases flow
+- [x] Add `react-native-purchases` + `react-native-purchases-ui` dependencies
+- [x] Create `lib/revenueCat.ts` — SDK wrapper (init, customerInfo, offerings, purchase, restore, identity sync); safe in Expo Go via dynamic require
+- [x] `updateUserProStatus(isPro)` in `lib/api.ts` — writes `profiles.is_pro` after purchase/restore
+- [x] `useRevenueCatInfo()` hook — queries RC, exposes purchase + restore mutations, invalidates user profile on success
+- [x] Build paywall screen (`app/(modal)/paywall.tsx`) — feature list, monthly/annual toggle, purchase CTA, restore button, static fallback pricing for Expo Go
+- [x] Remove `isPro` from `PreferencesContext` — `User.isPro` from `useUserProfile()` is now the only source of truth
+- [x] `useRecipePool` reads `isPro` from user profile (not preferences) — prevents self-upgrade
+- [x] `AuthContext` calls `logInRevenueCat` / `logOutRevenueCat` on auth state change
+- [x] Settings screen: replaced Pro toggle with live status row ("Pro Active" or "Upgrade to Pro →")
+- [x] Result screen: calorie upsell (🔒 Pro pill) navigates to paywall
+- [x] RevenueCat mocks added to `jest.setup.js`; `useRecipePool` tests updated for new `isPro` source
+- [ ] Configure RevenueCat project in dashboard (entitlement `pro_access`, offering `default`, products)
+- [ ] Create iOS IAP products in App Store Connect (`com.dizzydish.pro.monthly`, `com.dizzydish.pro.annual`)
+- [ ] Create Android subscriptions in Google Play Console (`pro_monthly`, `pro_annual`)
+- [ ] Set `EXPO_PUBLIC_REVENUECAT_IOS_KEY` and `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY` in EAS Secrets
+- [ ] Test full purchase flow in sandbox (iOS StoreKit config + Android License Tester)
+- [ ] Verify subscription status server-side (RevenueCat webhook → Supabase Edge Function)
 
 ### Error Tracking
 
@@ -197,3 +208,4 @@
 - [x] Spoonacular fixture fallback — `lib/fixtures/spoonacularRecipes.ts` (25 recipes) used when API key absent, quota exceeded, or network fails; same mapper/filter pipeline as live data; graceful handling of Spoonacular's silent HTTP 200 empty-response quota behavior
 - [x] Toast error variant — `UIContext.showToast(message, "error")` renders a warm-red toast; spin `onError` handlers surface user-friendly filter-mismatch messages
 - [x] Guest spin limit — 3 free spins/day, AsyncStorage-backed, daily reset at midnight (`hooks/useGuestSpinLimit.ts`)
+- [x] RevenueCat payments integration — `lib/revenueCat.ts` SDK wrapper, `useRevenueCatInfo()` hook, `updateUserProStatus()` Supabase sync, paywall screen, `isPro` removed from PreferencesContext, RevenueCat identity linked to Supabase auth lifecycle

@@ -12,19 +12,21 @@ import { fetchRandomPool, fetchProPool, buildPoolFingerprint } from "@/lib/spoon
 import type { Recipe, DietaryFilter } from "@/types";
 
 // Mutable state for context mocks
-let mockIsPro = false;
+let mockIsUserPro = false;
 let mockDietary: string[] = [];
 
 jest.mock("@/context/PreferencesContext", () => ({
   usePreferences: () => ({
-    state: { dietary: new Set(mockDietary), isPro: mockIsPro },
+    state: { dietary: new Set(mockDietary) },
   }),
 }));
 
-jest.mock("@/context/AuthContext", () => ({
-  useAuth: () => ({
-    state: { isAuthenticated: false },
+jest.mock("@/hooks/useUserProfile", () => ({
+  useUserProfile: () => ({
+    data: { isPro: mockIsUserPro },
   }),
+  useSubscription: jest.fn(),
+  useRevenueCatInfo: jest.fn(),
 }));
 
 const mockRecipes: Recipe[] = [
@@ -52,7 +54,7 @@ function createWrapper() {
 describe("useRecipePool", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockIsPro = false;
+    mockIsUserPro = false;
     mockDietary = [];
     (buildPoolFingerprint as jest.Mock).mockReturnValue("test-fingerprint");
     (fetchRandomPool as jest.Mock).mockResolvedValue(mockRecipes);
@@ -71,7 +73,7 @@ describe("useRecipePool", () => {
   });
 
   it("calls fetchProPool for Pro user", async () => {
-    mockIsPro = true;
+    mockIsUserPro = true;
     (buildPoolFingerprint as jest.Mock).mockReturnValue("pro-fingerprint");
 
     const { useRecipePool } = require("@/hooks/useRecipePool");

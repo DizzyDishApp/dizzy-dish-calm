@@ -9,7 +9,6 @@ interface PreferencesState {
   time: TimeFilter;
   calories: CalorieFilter;
   weeklyMode: boolean;
-  isPro: boolean;
 }
 
 const initialState: PreferencesState = {
@@ -17,7 +16,6 @@ const initialState: PreferencesState = {
   time: "Under 30 Min",
   calories: "Moderate",
   weeklyMode: false,
-  isPro: false,
 };
 
 // ── Serialization helpers for Set ──
@@ -27,7 +25,6 @@ interface SerializedPreferences {
   time: TimeFilter;
   calories: CalorieFilter;
   weeklyMode: boolean;
-  isPro: boolean;
 }
 
 function serialize(state: PreferencesState): SerializedPreferences {
@@ -36,7 +33,6 @@ function serialize(state: PreferencesState): SerializedPreferences {
     time: state.time,
     calories: state.calories,
     weeklyMode: state.weeklyMode,
-    isPro: state.isPro,
   };
 }
 
@@ -46,7 +42,6 @@ function deserialize(data: SerializedPreferences): PreferencesState {
     time: data.time,
     calories: data.calories,
     weeklyMode: data.weeklyMode,
-    isPro: data.isPro,
   };
 }
 
@@ -57,7 +52,6 @@ type PreferencesAction =
   | { type: "SET_TIME"; payload: TimeFilter }
   | { type: "SET_CALORIES"; payload: CalorieFilter }
   | { type: "SET_WEEKLY_MODE"; payload: boolean }
-  | { type: "SET_PRO"; payload: boolean }
   | { type: "RESTORE"; payload: PreferencesState };
 
 // ── Reducer ──
@@ -82,8 +76,6 @@ function preferencesReducer(
       return { ...state, calories: action.payload };
     case "SET_WEEKLY_MODE":
       return { ...state, weeklyMode: action.payload };
-    case "SET_PRO":
-      return { ...state, isPro: action.payload };
     case "RESTORE":
       return action.payload;
     default:
@@ -99,7 +91,6 @@ interface PreferencesContextValue {
   setTime: (filter: TimeFilter) => void;
   setCalories: (filter: CalorieFilter) => void;
   setWeeklyMode: (weekly: boolean) => void;
-  setPro: (pro: boolean) => void;
 }
 
 const PreferencesContext = createContext<PreferencesContextValue | undefined>(
@@ -149,13 +140,9 @@ export function PreferencesProvider({
     dispatch({ type: "SET_WEEKLY_MODE", payload: weekly });
   };
 
-  const setPro = (pro: boolean) => {
-    dispatch({ type: "SET_PRO", payload: pro });
-  };
-
   return (
     <PreferencesContext.Provider
-      value={{ state, toggleDietary, setTime, setCalories, setWeeklyMode, setPro }}
+      value={{ state, toggleDietary, setTime, setCalories, setWeeklyMode }}
     >
       {children}
     </PreferencesContext.Provider>

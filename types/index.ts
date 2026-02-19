@@ -110,6 +110,7 @@ export interface SubscriptionPlan {
   name: string;
   price: string;
   isActive: boolean;
+  productId?: string;
 }
 
 // ── Navigation Types ──
