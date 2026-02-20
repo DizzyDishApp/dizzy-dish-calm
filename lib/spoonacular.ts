@@ -11,7 +11,7 @@
  * in the Spoonacular dashboard.
  */
 
-import type { DietaryFilter, TimeFilter, CalorieFilter, Recipe, Ingredient } from "@/types";
+import type { DietaryFilter, TimeFilter, CalorieFilter, Recipe, Ingredient, RecipeStep } from "@/types";
 import { FIXTURE_RECIPES } from "@/lib/fixtures/spoonacularRecipes";
 
 // ── Constants ──
@@ -54,6 +54,16 @@ export interface SpoonacularRecipe {
   cuisines: string[];
   dishTypes: string[];
   sourceUrl: string;
+  spoonacularScore?: number;
+  aggregateLikes?: number;
+  analyzedInstructions?: Array<{
+    name: string;
+    steps: Array<{
+      number: number;
+      step: string;
+      length?: { number: number; unit: string };
+    }>;
+  }>;
   nutrition?: {
     nutrients: SpoonacularNutrient[];
   };
@@ -324,12 +334,32 @@ function mapIngredient(raw: SpoonacularIngredient): Ingredient {
   };
 }
 
+// ── Step Timing Helpers ──
+
+function convertToSeconds(n: number, unit: string): number {
+  if (unit.toLowerCase().startsWith("hour")) return n * 3600;
+  return n * 60; // default to minutes
+}
+
+export function detectDurationFromText(text: string): number | undefined {
+  const match = text.match(/(\d+)\s*(?:to\s*\d+\s*)?(minutes?|hours?)/i);
+  if (!match) return undefined;
+  const n = parseInt(match[1], 10);
+  return match[2].toLowerCase().startsWith("hour") ? n * 3600 : n * 60;
+}
+
 // ── Recipe Mapper ──
 
 export function mapSpoonacularRecipe(raw: SpoonacularRecipe): Recipe {
   const calorieNutrient = raw.nutrition?.nutrients.find(
     (n) => n.name === "Calories"
   );
+
+  const mappedSteps: RecipeStep[] = raw.analyzedInstructions?.[0]?.steps?.map((s) => {
+    const fromLength = s.length ? convertToSeconds(s.length.number, s.length.unit) : undefined;
+    const fromText = fromLength === undefined ? detectDurationFromText(s.step) : undefined;
+    return { text: s.step, durationSeconds: fromLength ?? fromText };
+  }) ?? [];
 
   return {
     id: String(raw.id),
@@ -344,6 +374,8 @@ export function mapSpoonacularRecipe(raw: SpoonacularRecipe): Recipe {
     emoji: pickEmoji(raw.dishTypes ?? [], raw.cuisines ?? []),
     imageUrl: raw.image || undefined,
     ingredients: raw.extendedIngredients?.map(mapIngredient),
+    instructions: mappedSteps.length > 0 ? mappedSteps : undefined,
+    rating: raw.spoonacularScore ? Math.round(raw.spoonacularScore) : undefined,
     sourceUrl: raw.sourceUrl || undefined,
   };
 }

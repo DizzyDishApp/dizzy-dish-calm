@@ -16,6 +16,7 @@ import {
   passesIngredientFilter,
   pickEmoji,
   stripHtml,
+  detectDurationFromText,
 } from "@/lib/spoonacular";
 import type { Recipe } from "@/types";
 
@@ -202,6 +203,64 @@ describe("mapSpoonacularRecipe", () => {
     expect(result.imageUrl).toBe("https://example.com/img.jpg");
     expect(result.sourceUrl).toBe("https://example.com/recipe");
   });
+
+  it("maps analyzedInstructions to RecipeStep[]", () => {
+    const result = mapSpoonacularRecipe(
+      makeRawRecipe({
+        analyzedInstructions: [
+          {
+            name: "",
+            steps: [
+              { number: 1, step: "Boil water for 8 minutes." },
+              { number: 2, step: "Add pasta and stir.", length: { number: 10, unit: "minutes" } },
+            ],
+          },
+        ],
+      })
+    );
+    expect(result.instructions).toHaveLength(2);
+    expect(result.instructions![0].text).toBe("Boil water for 8 minutes.");
+    expect(result.instructions![1].text).toBe("Add pasta and stir.");
+    expect(result.instructions![1].durationSeconds).toBe(600);
+  });
+
+  it("uses length field when present (overrides text detection)", () => {
+    const result = mapSpoonacularRecipe(
+      makeRawRecipe({
+        analyzedInstructions: [
+          {
+            name: "",
+            steps: [
+              { number: 1, step: "Simmer for 5 minutes.", length: { number: 3, unit: "minutes" } },
+            ],
+          },
+        ],
+      })
+    );
+    // length field wins over text "5 minutes" — should be 3 min = 180s
+    expect(result.instructions![0].durationSeconds).toBe(180);
+  });
+
+  it("falls back to text detection when no length field", () => {
+    const result = mapSpoonacularRecipe(
+      makeRawRecipe({
+        analyzedInstructions: [
+          {
+            name: "",
+            steps: [
+              { number: 1, step: "Bake for 25 minutes until golden." },
+            ],
+          },
+        ],
+      })
+    );
+    expect(result.instructions![0].durationSeconds).toBe(1500);
+  });
+
+  it("instructions is undefined when no analyzedInstructions", () => {
+    const result = mapSpoonacularRecipe(makeRawRecipe());
+    expect(result.instructions).toBeUndefined();
+  });
 });
 
 // ── passesTimeFilter ──
@@ -308,6 +367,34 @@ describe("pickEmoji", () => {
 
   it("unknown → fallback emoji", () => {
     expect(pickEmoji([], [])).toBe("🍲");
+  });
+});
+
+// ── detectDurationFromText ──
+
+describe("detectDurationFromText", () => {
+  it("'cook for 8 minutes' → 480", () => {
+    expect(detectDurationFromText("cook for 8 minutes")).toBe(480);
+  });
+
+  it("'simmer for 1 hour' → 3600", () => {
+    expect(detectDurationFromText("simmer for 1 hour")).toBe(3600);
+  });
+
+  it("'bake 25 to 30 minutes' → 1500 (uses first number)", () => {
+    expect(detectDurationFromText("bake 25 to 30 minutes")).toBe(1500);
+  });
+
+  it("'stir well' → undefined", () => {
+    expect(detectDurationFromText("stir well")).toBeUndefined();
+  });
+
+  it("case-insensitive: 'cook 5 Minutes' → 300", () => {
+    expect(detectDurationFromText("cook 5 Minutes")).toBe(300);
+  });
+
+  it("'2 hours' → 7200", () => {
+    expect(detectDurationFromText("roast for 2 hours")).toBe(7200);
   });
 });
 
