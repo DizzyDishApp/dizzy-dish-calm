@@ -25,7 +25,10 @@
       "WebFetch(domain:openrecip.es)",
       "WebFetch(domain:publicdomainrecipes.org)",
       "WebFetch(domain:world.openfoodfacts.org)",
-      "WebFetch(domain:openfoodfacts.github.io)"
+      "WebFetch(domain:openfoodfacts.github.io)",
+      "Bash(eas:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm ci:*)"
     ]
   }
 }
