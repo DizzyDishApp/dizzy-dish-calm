@@ -105,7 +105,7 @@ The app ships with **25 hand-crafted fallback recipes** (`lib/fixtures/spoonacul
 - The API returns HTTP 200 with 0 results (Spoonacular's silent quota behaviour — it doesn't always send a proper 402)
 - A network error prevents reaching the API
 
-This means the spin button always works during development, even without a key or when the daily free quota (150 points) is exhausted.
+This means the spin button always works during development, even without a key or when the daily free quota (50 points) is exhausted.
 
 ### Setting up the API key
 

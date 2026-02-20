@@ -17,7 +17,15 @@
       "Bash(gh pr create:*)",
       "Bash(brew list:*)",
       "Bash(npx expo install:*)",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "WebFetch(domain:www.themealdb.com)",
+      "WebFetch(domain:developer.edamam.com)",
+      "Bash(grep:*)",
+      "WebSearch",
+      "WebFetch(domain:openrecip.es)",
+      "WebFetch(domain:publicdomainrecipes.org)",
+      "WebFetch(domain:world.openfoodfacts.org)",
+      "WebFetch(domain:openfoodfacts.github.io)"
     ]
   }
 }

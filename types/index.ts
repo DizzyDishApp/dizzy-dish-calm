@@ -8,6 +8,11 @@ export interface Ingredient {
   original: string;
 }
 
+export interface RecipeStep {
+  text: string;
+  durationSeconds?: number; // from Spoonacular length field or regex-parsed
+}
+
 export interface Recipe {
   id: string;
   name: string;
@@ -19,7 +24,9 @@ export interface Recipe {
   emoji: string;
   imageUrl?: string;
   ingredients?: Ingredient[];  // from extendedIngredients — required for Instacart
-  sourceUrl?: string;          // for "View Recipe" button
+  instructions?: RecipeStep[]; // ordered cooking steps with optional timing
+  rating?: number;             // spoonacularScore 0–100
+  sourceUrl?: string;          // for "View Recipe" link
 }
 
 export interface WeeklyPlanDay {

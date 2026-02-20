@@ -230,7 +230,7 @@ Spoonacular include/exclude tags use `+` for spaces, **not** `%20`:
 EXPO_PUBLIC_SPOONACULAR_API_KEY=your_key_here
 ```
 
-Free tier: 150 points/day. `/recipes/random` = 1 point. `/recipes/complexSearch` with nutrition = more. Set IP restrictions in the Spoonacular dashboard — the key is visible in the JS bundle.
+Free tier: **50 points/day**, 1 concurrent request, no SLA. At 50 points per pool fetch (`POOL_SIZE=50`), a free key is exhausted after a single fetch per day — any preference change that generates a new fingerprint will immediately hit the fixture fallback. Set IP restrictions in the Spoonacular dashboard — the key is visible in the JS bundle.
 
 ---
 
@@ -241,3 +241,31 @@ Free tier: 150 points/day. `/recipes/random` = 1 point. `/recipes/complexSearch`
 **OAuth in Expo Go** — `WebBrowser.openAuthSessionAsync` cannot intercept `exp://` redirects reliably. OAuth flows require a development build with the native `dizzydish://` scheme. Use `npx expo run:ios` / `run:android` to test OAuth.
 
 **Spoonacular returns HTTP 200 with empty results when quota is silently exceeded** — The API sometimes returns `{"status":"failure","code":402,...}` with HTTP 200. The `!response.ok` check won't catch it. The post-parse zero-length check in `fetchRandomPool`/`fetchProPool` triggers the fixture fallback. Watch for `[spoonacular] API returned 0 recipes — using fixture pool` in logs.
+
+---
+
+## Future: Own Recipe Database
+
+Research notes for when we move beyond Spoonacular as the recipe data source.
+
+### Third-party API Restrictions
+| Source | Restriction |
+|---|---|
+| **Spoonacular** | TOS prohibits permanent storage — max 1-hour cache only. Cannot build our own DB from their data. |
+| **TheMealDB** | Free tier is read-only and non-commercial. Commercial/supporter license required for production use. |
+| **Edamam** | TOS explicitly prohibits automated/bulk fetching to build a competing database. |
+
+### Future AI-Powered Vision
+The long-term architecture avoids third-party recipe APIs entirely:
+
+1. **User filters** → dietary preferences, time, calories, cuisine
+2. **Supabase `recipes` table** → original, licensed recipe content (written in-house or licensed)
+3. **Claude Haiku** → ranks/selects best match for the user's exact context
+4. **Result** → personalized pick with no external API dependency or quota
+
+### When Ready to Build
+- Need original recipe content or a permissive commercial license — **no scraped data**
+- Schema: `recipes` table with `cuisines[]`, `dietary_tags[]`, `time_minutes`, `calories_per_serving`, `ingredients jsonb`, `instructions jsonb`, `image_url`
+- Use `pgvector` embeddings on recipe descriptions for semantic matching
+- Claude Haiku call: pass top-N candidates + user prefs → model picks and explains the selection
+- Image hosting: self-hosted via Supabase Storage (avoids CDN URL instability)

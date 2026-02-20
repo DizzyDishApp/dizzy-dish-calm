@@ -1,9 +1,12 @@
 import React from "react";
 import { View, Text, ActivityIndicator, ScrollView } from "react-native";
+import { useRouter } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { HeaderBar } from "@/components/HeaderBar";
 import { RecipeCard } from "@/components/RecipeCard";
-import { useSavedRecipes } from "@/hooks/useSavedRecipes";
+import { useSavedRecipes, useUnsaveRecipe } from "@/hooks/useSavedRecipes";
+import { queryKeys } from "@/lib/queryKeys";
 import { Colors } from "@/constants/colors";
 
 /**
@@ -13,6 +16,9 @@ import { Colors } from "@/constants/colors";
  * Handles loading, error, and empty states explicitly.
  */
 export default function SavedScreen() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const unsaveMutation = useUnsaveRecipe();
   const { data: recipes, isLoading, isError, error } = useSavedRecipes();
 
   return (
@@ -52,9 +58,18 @@ export default function SavedScreen() {
               recipe={recipe}
               index={i}
               saved
-              onToggleSave={() => {
-                // MIGRATION NOTE: Wire up unsave mutation here
+              onPress={() => {
+                queryClient.setQueryData(
+                  queryKeys.recipes.detail(recipe.id),
+                  recipe
+                );
+                router.push({
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  pathname: "/result" as any,
+                  params: { recipeId: recipe.id },
+                });
               }}
+              onToggleSave={() => unsaveMutation.mutate(recipe.id)}
             />
           ))}
         </ScrollView>
