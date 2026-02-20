@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "Dizzy Dish",
-    "owner": "deejkelms",
-    "slug": "dizzydishcalm",
+    "owner": "dizzydishapp",
+    "slug": "dizzydishmain",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -43,7 +43,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "cb013ec3-12e6-466b-950d-750ed2e7332f"
+        "projectId": "16e4c09d-9471-47bd-9630-64b50f7c8a3b"
       }
     }
   }
