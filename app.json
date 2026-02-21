@@ -29,8 +29,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#FAF6F1"
       },
-      "package": "com.dizzydish.app",
-      "versionCode": 1
+      "package": "com.dizzydish.app"
     },
     "plugins": [
       "expo-router",

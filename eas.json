@@ -15,6 +15,9 @@
       "environment": "preview",
       "ios": {
         "buildConfiguration": "Release"
+      },
+      "android": {
+        "buildType": "app-bundle"
       }
     },
     "production": {
