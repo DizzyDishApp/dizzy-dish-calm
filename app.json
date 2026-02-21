@@ -1,7 +1,8 @@
 {
   "expo": {
     "name": "Dizzy Dish",
-    "slug": "dizzy-dish",
+    "owner": "dizzydishapp",
+    "slug": "dizzydishmain",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -18,7 +19,10 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.dizzydish.app"
+      "bundleIdentifier": "com.deejkelms.dizzydish",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -30,10 +34,16 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-asset"
+      "expo-asset",
+      "expo-dev-client"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "16e4c09d-9471-47bd-9630-64b50f7c8a3b"
+      }
     }
   }
 }
