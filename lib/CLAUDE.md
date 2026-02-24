@@ -70,6 +70,25 @@ Google sign-in uses `supabase.auth.signInWithOAuth` + `expo-web-browser`:
 
 **Known limitation:** OAuth does not work in Expo Go. Requires a development build (`npx expo run:ios` / `run:android`).
 
+### Apple Sign-In Flow (iOS only)
+Apple Sign-In uses the native system sheet via `expo-apple-authentication` + Supabase `signInWithIdToken`:
+1. `signInWithApple()` in `AuthContext` calls `AppleAuthentication.signInAsync()` requesting `FULL_NAME` + `EMAIL`
+2. Apple presents the native sheet (Face ID / Touch ID)
+3. On success, passes `credential.identityToken` to `supabase.auth.signInWithIdToken({ provider: "apple" })`
+4. `onAuthStateChange` fires, AuthContext updates, user is signed in
+5. The Apple `SocialButton` is hidden on Android via `Platform.OS === "ios"` in `account.tsx`
+
+**App.json config required:** `"usesAppleSignIn": true` in the `ios` section (already set)
+
+**Supabase config required:**
+- Apple provider enabled with Team ID, Key ID, Services ID (`com.dizzydish.app`), and `.p8` private key
+
+**developer.apple.com config required:**
+- App ID with "Sign in with Apple" capability enabled
+- Key with "Sign in with Apple" enabled (download `.p8` once — it cannot be re-downloaded)
+
+**Known limitation:** Requires a development build (`npx expo run:ios`). Does not work in Expo Go. Apple mandates this button be present if any other social login is offered.
+
 ### Account Screen Auth UX
 The account screen uses an **identifier-first** pattern:
 1. User enters email → taps GET STARTED
@@ -92,7 +111,8 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 | User profile (read) | Supabase `profiles` table |
 | Saved recipes (CRUD) | Supabase `saved_recipes` table |
 | Google OAuth sign-in | Wired — needs dev build to test |
-| Social auth (Apple/Facebook) | Not yet wired |
+| Apple Sign-In (iOS only) | Wired — `signInWithApple()` via `expo-apple-authentication` + `signInWithIdToken`; hidden on Android |
+| Social auth (Facebook) | Not yet wired |
 | Recipe spin | Spoonacular pool draw; fixture fallback |
 | Weekly plan spin | Spoonacular pool draw; fixture fallback |
 | Subscription / payments | RevenueCat SDK (`lib/revenueCat.ts`) |

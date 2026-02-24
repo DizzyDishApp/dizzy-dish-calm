@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { logInRevenueCat, logOutRevenueCat } from "@/lib/revenueCat";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
+import * as AppleAuthentication from "expo-apple-authentication";
 
 // ── State ──
 
@@ -143,6 +144,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: null };
   };
 
+  const signInWithApple = async (): Promise<{ error: string | null }> => {
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: "apple",
+        token: credential.identityToken!,
+      });
+      if (error) return { error: error.message };
+      return { error: null };
+    } catch (e: unknown) {
+      if ((e as any).code === "ERR_REQUEST_CANCELED") return { error: null };
+      const message = e instanceof Error ? e.message : "Apple sign-in failed.";
+      return { error: message };
+    }
+  };
+
   const signInWithGoogle = async (): Promise<{ error: string | null }> => {
     try {
       const redirectTo = Linking.createURL("auth/callback");
@@ -193,7 +215,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ state, signUp, signIn, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ state, signUp, signIn, signInWithGoogle, signInWithApple, signOut }}>
       {children}
     </AuthContext.Provider>
   );

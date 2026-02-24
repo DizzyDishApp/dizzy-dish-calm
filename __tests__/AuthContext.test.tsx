@@ -165,6 +165,113 @@ describe("AuthProvider", () => {
     });
   });
 
+  it("signInWithApple calls AppleAuthentication.signInAsync with correct scopes", async () => {
+    const AppleAuthentication = require("expo-apple-authentication");
+    AppleAuthentication.signInAsync.mockResolvedValue({
+      identityToken: "apple-id-token",
+      user: "apple-user-id",
+    });
+    (mockAuth.signInWithIdToken as jest.Mock).mockResolvedValue({
+      data: {},
+      error: null,
+    });
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.state.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.signInWithApple();
+    });
+
+    expect(AppleAuthentication.signInAsync).toHaveBeenCalledWith({
+      requestedScopes: ["FULL_NAME", "EMAIL"],
+    });
+  });
+
+  it("signInWithApple passes identity token to supabase.auth.signInWithIdToken", async () => {
+    const AppleAuthentication = require("expo-apple-authentication");
+    AppleAuthentication.signInAsync.mockResolvedValue({
+      identityToken: "apple-id-token",
+      user: "apple-user-id",
+    });
+    (mockAuth.signInWithIdToken as jest.Mock).mockResolvedValue({
+      data: {},
+      error: null,
+    });
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.state.isLoading).toBe(false));
+
+    let response: { error: string | null } | undefined;
+    await act(async () => {
+      response = await result.current.signInWithApple();
+    });
+
+    expect(mockAuth.signInWithIdToken).toHaveBeenCalledWith({
+      provider: "apple",
+      token: "apple-id-token",
+    });
+    expect(response?.error).toBeNull();
+  });
+
+  it("signInWithApple returns error when supabase signInWithIdToken fails", async () => {
+    const AppleAuthentication = require("expo-apple-authentication");
+    AppleAuthentication.signInAsync.mockResolvedValue({
+      identityToken: "apple-id-token",
+      user: "apple-user-id",
+    });
+    (mockAuth.signInWithIdToken as jest.Mock).mockResolvedValue({
+      data: {},
+      error: { message: "Invalid token" },
+    });
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.state.isLoading).toBe(false));
+
+    let response: { error: string | null } | undefined;
+    await act(async () => {
+      response = await result.current.signInWithApple();
+    });
+
+    expect(response?.error).toBe("Invalid token");
+  });
+
+  it("signInWithApple returns null error when user cancels (ERR_REQUEST_CANCELED)", async () => {
+    const AppleAuthentication = require("expo-apple-authentication");
+    const cancelError = Object.assign(new Error("canceled"), {
+      code: "ERR_REQUEST_CANCELED",
+    });
+    AppleAuthentication.signInAsync.mockRejectedValue(cancelError);
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.state.isLoading).toBe(false));
+
+    let response: { error: string | null } | undefined;
+    await act(async () => {
+      response = await result.current.signInWithApple();
+    });
+
+    expect(response?.error).toBeNull();
+    expect(mockAuth.signInWithIdToken).not.toHaveBeenCalled();
+  });
+
+  it("signInWithApple returns generic error message on unexpected failure", async () => {
+    const AppleAuthentication = require("expo-apple-authentication");
+    AppleAuthentication.signInAsync.mockRejectedValue(
+      new Error("Something went wrong")
+    );
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.state.isLoading).toBe(false));
+
+    let response: { error: string | null } | undefined;
+    await act(async () => {
+      response = await result.current.signInWithApple();
+    });
+
+    expect(response?.error).toBe("Something went wrong");
+  });
+
   it("signOut calls supabase.auth.signOut", async () => {
     (mockAuth.signOut as jest.Mock).mockResolvedValue({ error: null });
 

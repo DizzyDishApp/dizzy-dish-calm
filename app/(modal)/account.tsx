@@ -56,7 +56,7 @@ function friendlyError(msg: string): string {
 
 export default function AccountScreen() {
   const router = useRouter();
-  const { state: auth, signUp, signIn, signInWithGoogle, signOut } = useAuth();
+  const { state: auth, signUp, signIn, signInWithGoogle, signInWithApple, signOut } = useAuth();
   const { consumeSnapshot } = useAuthRedirect();
   const { showToast } = useUI();
   const { data: userProfile } = useUserProfile();
@@ -403,14 +403,15 @@ export default function AccountScreen() {
                 if (googleError) setError(googleError);
               }}
             />
-            <SocialButton
-              provider="facebook"
-              onPress={() => console.log("Facebook OAuth — not yet implemented")}
-            />
-            <SocialButton
-              provider="apple"
-              onPress={() => console.log("Apple OAuth — not yet implemented")}
-            />
+            {Platform.OS === "ios" && (
+              <SocialButton
+                provider="apple"
+                onPress={async () => {
+                  const { error: appleError } = await signInWithApple();
+                  if (appleError) setError(appleError);
+                }}
+              />
+            )}
 
             {/* Divider */}
             <View className="flex-row items-center gap-2.5 my-4">
