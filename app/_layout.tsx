@@ -85,6 +85,10 @@ export default function RootLayout() {
               options={{ animation: "slide_from_bottom" }}
             />
             <Stack.Screen
+              name="reset-password"
+              options={{ animation: "slide_from_bottom" }}
+            />
+            <Stack.Screen
               name="(modal)"
               options={{
                 presentation: "modal",
