@@ -31,7 +31,7 @@ import { Colors } from "@/constants/colors";
  * Client state: AuthContext
  */
 
-type AuthPhase = "email" | "password";
+type AuthPhase = "email" | "password" | "reset-sent";
 
 /** Map Supabase error messages to user-friendly text. */
 function friendlyError(msg: string): string {
@@ -56,7 +56,7 @@ function friendlyError(msg: string): string {
 
 export default function AccountScreen() {
   const router = useRouter();
-  const { state: auth, signUp, signIn, signInWithGoogle, signInWithApple, signOut } = useAuth();
+  const { state: auth, signUp, signIn, signInWithGoogle, signInWithApple, resetPassword, signOut } = useAuth();
   const { consumeSnapshot } = useAuthRedirect();
   const { showToast } = useUI();
   const { data: userProfile } = useUserProfile();
@@ -238,6 +238,7 @@ export default function AccountScreen() {
     setPassword("");
     setConfirmPassword("");
     setError(null);
+    setEmail("");
   };
 
   const handleSignOut = async () => {
@@ -444,8 +445,28 @@ export default function AccountScreen() {
               </Animated.View>
             )}
 
+            {/* Reset link sent confirmation */}
+            {phase === "reset-sent" && (
+              <Animated.View entering={FadeIn.duration(250)} className="items-center py-4">
+                <Text className="font-display text-lg text-txt text-center mb-2">
+                  Check your email
+                </Text>
+                <Text className="font-body text-xs text-txt-soft text-center leading-relaxed mb-4">
+                  We sent a reset link to{"\n"}
+                  <Text className="text-warm">{email}</Text>
+                </Text>
+                <Text
+                  className="font-body text-xs text-warm text-center"
+                  onPress={handleChangeEmail}
+                  accessibilityRole="button"
+                >
+                  Back to sign in
+                </Text>
+              </Animated.View>
+            )}
+
             {/* Email field (phase 1) */}
-            {phase === "email" && (
+            {phase !== "reset-sent" && phase === "email" && (
               <>
                 <Text className="font-body-semibold text-xs text-txt mb-1.5">
                   Email Address
@@ -470,7 +491,7 @@ export default function AccountScreen() {
             )}
 
             {/* Password fields (phase 2) */}
-            {phase === "password" && (
+            {phase !== "reset-sent" && phase === "password" && (
               <Animated.View entering={FadeIn.duration(250)}>
                 <Text className="font-body-semibold text-xs text-txt mb-1.5">
                   Password
@@ -495,9 +516,16 @@ export default function AccountScreen() {
                 {emailExists && (
                   <Text
                     className="font-body text-xs text-warm text-right mb-2"
-                    onPress={() => {
-                      // MIGRATION NOTE: Wire up password reset via supabase.auth.resetPasswordForEmail
-                      console.log("Forgot password — not yet implemented");
+                    onPress={async () => {
+                      setError(null);
+                      setLoading(true);
+                      const { error: resetError } = await resetPassword(email.trim());
+                      setLoading(false);
+                      if (resetError) {
+                        setError(resetError);
+                      } else {
+                        setPhase("reset-sent");
+                      }
                     }}
                     accessibilityRole="link"
                   >
@@ -533,32 +561,34 @@ export default function AccountScreen() {
             )}
 
             {/* Error message */}
-            {error && (
+            {error && phase !== "reset-sent" && (
               <Text className="font-body text-xs text-red-500 mt-2 mb-1">
                 {error}
               </Text>
             )}
 
             {/* CTA button */}
-            <View className="mt-3">
-              {phase === "email" ? (
-                <PrimaryButton
-                  label="GET STARTED"
-                  variant="warm"
-                  bordered
-                  loading={checkingEmail}
-                  onPress={handleGetStarted}
-                />
-              ) : (
-                <PrimaryButton
-                  label={emailExists ? "SIGN IN" : "SIGN UP"}
-                  variant="warm"
-                  bordered
-                  loading={loading}
-                  onPress={handleSubmitAuth}
-                />
-              )}
-            </View>
+            {phase !== "reset-sent" && (
+              <View className="mt-3">
+                {phase === "email" ? (
+                  <PrimaryButton
+                    label="GET STARTED"
+                    variant="warm"
+                    bordered
+                    loading={checkingEmail}
+                    onPress={handleGetStarted}
+                  />
+                ) : (
+                  <PrimaryButton
+                    label={emailExists ? "SIGN IN" : "SIGN UP"}
+                    variant="warm"
+                    bordered
+                    loading={loading}
+                    onPress={handleSubmitAuth}
+                  />
+                )}
+              </View>
+            )}
 
             {/* Terms */}
             <Text className="font-body text-[9px] text-txt-light leading-relaxed mt-3.5 text-center">
