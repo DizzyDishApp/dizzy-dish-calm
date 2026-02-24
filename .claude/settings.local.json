@@ -28,7 +28,13 @@
       "WebFetch(domain:openfoodfacts.github.io)",
       "Bash(eas:*)",
       "Bash(npm ls:*)",
-      "Bash(npm ci:*)"
+      "Bash(npm ci:*)",
+      "Bash(gh repo:*)",
+      "Bash(gh api:*)",
+      "Bash(gh auth:*)",
+      "Bash(gh project:*)",
+      "Bash(chmod +x:*)",
+      "Bash(bash:*)"
     ]
   }
 }
