@@ -546,6 +546,44 @@ The description must be lowercase with hyphens only (no underscores, no uppercas
 
 ---
 
+## Contributing & Project Management
+
+### Where things live
+
+| Resource | URL | Purpose |
+|---|---|---|
+| **Project Board** | [github.com/orgs/DizzyDishApp/projects/7](https://github.com/orgs/DizzyDishApp/projects/7) | Kanban — what's in progress right now |
+| **Discussions** | [github.com/DizzyDishApp/dizzy-dish-calm/discussions](https://github.com/DizzyDishApp/dizzy-dish-calm/discussions) | Feature debate, roadmap, wants vs needs |
+| **Issues** | [github.com/DizzyDishApp/dizzy-dish-calm/issues](https://github.com/DizzyDishApp/dizzy-dish-calm/issues) | Committed work items with labels + milestones |
+| **Wiki** | [github.com/DizzyDishApp/dizzy-dish-calm/wiki](https://github.com/DizzyDishApp/dizzy-dish-calm/wiki) | Architecture, feature guides, design system, testing |
+| **Milestones** | [github.com/DizzyDishApp/dizzy-dish-calm/milestones](https://github.com/DizzyDishApp/dizzy-dish-calm/milestones) | Internal Alpha → TestFlight Beta → App Store 1.0 → Post-Launch 1.1 |
+
+### Workflow
+
+1. **New idea?** → Open a [Discussion](https://github.com/DizzyDishApp/dizzy-dish-calm/discussions) first. Debate it, vote on it. Once it's agreed on, convert to an issue.
+2. **New issue?** → Use the issue templates. Always set a `priority:` label, an `area:` label, and a milestone.
+3. **Starting work?** → Move the issue to **This Sprint** on the board, cut a branch (`feat/issue-N-short-description`), move to **In Progress**.
+4. **Opening a PR?** → Add `Closes #N` in the PR body. This auto-closes the issue and moves the board card to Done on merge.
+
+### Sprint vs Milestone
+
+- **Milestone** = the destination (Internal Alpha, TestFlight Beta, etc.) — weeks of work
+- **This Sprint** = what you're doing *this week* — 2–3 issues per person max
+
+Each week, pull the highest-priority milestone issues into **This Sprint**. When the milestone's issues are all Done, you ship.
+
+### Labels
+
+Issues use three label namespaces — always set at least one from each of the first two:
+
+- `area:` — which feature module (spin, auth, payments, instacart, etc.)
+- `priority:` — P0 (launch-blocking) → P3 (nice-to-have)
+- `type:` — optional modifier (`native-only`, `accessibility`, `performance`, etc.)
+
+See `tasks.md` for the full prioritized task list linked to GitHub issues.
+
+---
+
 ## License
 
 Proprietary. All rights reserved.

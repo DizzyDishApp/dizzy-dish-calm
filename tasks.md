@@ -7,6 +7,10 @@
 > - `[x]` Done
 > - `[ ]` To do
 > - `[ ] 🔄` In progress
+>
+> **Project management**
+> Open items link to their GitHub issue. Board: https://github.com/orgs/DizzyDishApp/projects/7
+> To start a task: move the issue to **This Sprint** on the board, cut a branch `feat/issue-N-description`, and add `Closes #N` to your PR.
 
 ---
 
@@ -22,7 +26,7 @@
 - [x] Guest spin limit — 3 spins/day tracked in AsyncStorage, daily reset (`hooks/useGuestSpinLimit.ts`)
 - [ ] Implement `PUT /user/profile` — profile updates
 - [ ] Implement `GET /user/subscription` — real subscription status
-- [ ] Add proper error responses and retry/back-off in the client
+- [ ] Add proper error responses and retry/back-off in the client ([#13](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/13))
 
 ### Authentication
 
@@ -31,9 +35,9 @@
 - [x] Rewrite AuthContext to use Supabase `onAuthStateChange` listener
 - [x] Wire up email/password sign-up and sign-in on account screen
 - [x] Auto-create profile row on sign-up via database trigger
-- [ ] Wire up Apple Sign-In
-- [ ] 🔄 Wire up Google Sign-In — code wired, needs dev build to test (Expo Go can't handle redirect)
-- [ ] Wire up Facebook Login
+- [ ] Wire up Apple Sign-In ([#10](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/10))
+- [ ] 🔄 Wire up Google Sign-In — code wired, needs dev build to test (Expo Go can't handle redirect) ([#11](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/11))
+- [ ] Wire up Facebook Login ([#12](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/12))
 - [x] Auth UI — OAuth buttons (visual only, Google/Facebook/Apple)
 - [x] Auth UI — Identifier-first flow (email → detect existing/new → password)
 - [x] Auth UI — Locked Instacart & Subscription sections for unauthenticated users
@@ -53,18 +57,18 @@
 - [x] Settings screen: replaced Pro toggle with live status row ("Pro Active" or "Upgrade to Pro →")
 - [x] Result screen: calorie upsell (🔒 Pro pill) navigates to paywall
 - [x] RevenueCat mocks added to `jest.setup.js`; `useRecipePool` tests updated for new `isPro` source
-- [ ] Configure RevenueCat project in dashboard (entitlement `pro_access`, offering `default`, products)
-- [ ] Create iOS IAP products in App Store Connect (`com.dizzydish.pro.monthly`, `com.dizzydish.pro.annual`)
-- [ ] Create Android subscriptions in Google Play Console (`pro_monthly`, `pro_annual`)
-- [ ] Set `EXPO_PUBLIC_REVENUECAT_IOS_KEY` and `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY` in EAS Secrets
-- [ ] Test full purchase flow in sandbox (iOS StoreKit config + Android License Tester)
-- [ ] Verify subscription status server-side (RevenueCat webhook → Supabase Edge Function)
+- [ ] Configure RevenueCat project in dashboard (entitlement `pro_access`, offering `default`, products) ([#14](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/14))
+- [ ] Create iOS IAP products in App Store Connect (`com.dizzydish.pro.monthly`, `com.dizzydish.pro.annual`) ([#15](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/15))
+- [ ] Create Android subscriptions in Google Play Console (`pro_monthly`, `pro_annual`) ([#16](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/16))
+- [ ] Set `EXPO_PUBLIC_REVENUECAT_IOS_KEY` and `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY` in EAS Secrets ([#17](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/17))
+- [ ] Test full purchase flow in sandbox (iOS StoreKit config + Android License Tester) ([#18](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/18))
+- [ ] Verify subscription status server-side (RevenueCat webhook → Supabase Edge Function) ([#19](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/19))
 
 ### Error Tracking
 
-- [ ] Add `@sentry/react-native` and initialize in `_layout.tsx`
-- [ ] Configure source-map uploads for readable stack traces
-- [ ] Add breadcrumbs to key user flows (spin, save, purchase)
+- [ ] Add `@sentry/react-native` and initialize in `_layout.tsx` ([#20](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/20))
+- [ ] Configure source-map uploads for readable stack traces ([#20](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/20))
+- [ ] Add breadcrumbs to key user flows (spin, save, purchase) ([#20](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/20))
 
 ---
 
@@ -87,33 +91,33 @@
 - [x] Unit tests: guest spin limit hook — increment, daily reset, limit reached (`useGuestSpinLimit.test.ts`)
 - [x] Integration tests: `useRecipePool` — pool fetch, cache fingerprint, tier switching (`useRecipePool.test.tsx`)
 - [x] Integration tests: `useSpinRecipe` / `useSpinWeeklyPlan` mutations — success, empty pool, filter mismatch (`useSpinRecipe.test.tsx`)
-- [ ] Write unit tests for utility functions (`lib/haptics.ts`, `lib/asyncStorage.ts`)
-- [ ] Write component tests for more UI (`SpinButton`, `RecipeCard`, `FilterPill`)
-- [ ] Write integration tests for spin → result → save flow
-- [ ] Add snapshot tests for design-system components
+- [ ] Write unit tests for utility functions (`lib/haptics.ts`, `lib/asyncStorage.ts`) ([#27](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/27))
+- [ ] Write component tests for more UI (`SpinButton`, `RecipeCard`, `FilterPill`) ([#27](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/27))
+- [ ] Write integration tests for spin → result → save flow ([#28](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/28))
+- [ ] Add snapshot tests for design-system components ([#27](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/27))
 
 ### CI / CD
 
 - [x] GitHub Actions workflow: `npm run test:ci` on push/PR (`.github/workflows/test.yml`)
-- [ ] Create `eas.json` with development, preview, and production profiles
-- [ ] Expand workflow: lint → typecheck → test
-- [ ] Add EAS Build step (preview on PR, production on merge to `main`)
-- [ ] Add EAS Submit step for App Store and Google Play
-- [ ] Configure OTA updates via `expo-updates`
+- [x] Create `eas.json` with development, preview, and production profiles
+- [ ] Expand workflow: lint → typecheck → test ([#21](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/21))
+- [ ] Add EAS Build step (preview on PR, production on merge to `main`) ([#22](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/22))
+- [ ] Add EAS Submit step for App Store and Google Play ([#23](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/23))
+- [ ] Configure OTA updates via `expo-updates` ([#24](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/24))
 
 ### Deep Linking
 
 - [x] URL scheme `dizzydish://` registered in `app.json`
 - [ ] Handle inbound deep links for shared recipes (`dizzydish://recipe/:id`)
-- [ ] Handle Instacart OAuth callback deep link
+- [ ] Handle Instacart OAuth callback deep link ([#25](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/25))
 - [ ] Add universal links / App Links for `https://dizzydish.app` domain
 
 ### Instacart Integration
 
-- [ ] Obtain real Instacart API credentials
-- [ ] Implement OAuth connect flow (replace mock `connectInstacart()`)
-- [ ] Implement "Add ingredients to cart" API call
-- [ ] Handle token refresh and disconnect
+- [ ] Obtain real Instacart API credentials ([#25](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/25))
+- [ ] Implement OAuth connect flow (replace mock `connectInstacart()`) ([#25](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/25))
+- [ ] Implement "Add ingredients to cart" API call ([#26](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/26))
+- [ ] Handle token refresh and disconnect ([#25](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/25))
 
 ---
 
@@ -121,31 +125,31 @@
 
 ### Analytics
 
-- [ ] Choose provider (Segment, Mixpanel, Amplitude, or PostHog)
-- [ ] Track key events: `spin`, `save_recipe`, `unsave_recipe`, `purchase`, `login`
-- [ ] Track screen views via Expo Router navigation listener
-- [ ] Add user properties (plan tier, dietary filters, platform)
+- [ ] Choose provider (Segment, Mixpanel, Amplitude, or PostHog) ([#31](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/31))
+- [ ] Track key events: `spin`, `save_recipe`, `unsave_recipe`, `purchase`, `login` ([#31](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/31))
+- [ ] Track screen views via Expo Router navigation listener ([#31](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/31))
+- [ ] Add user properties (plan tier, dietary filters, platform) ([#31](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/31))
 
 ### Push Notifications
 
-- [ ] Add `expo-notifications` dependency
-- [ ] Request notification permission with contextual prompt
-- [ ] Register device push token with backend
-- [ ] Implement weekly meal-plan reminder notification
+- [ ] Add `expo-notifications` dependency ([#33](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/33))
+- [ ] Request notification permission with contextual prompt ([#33](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/33))
+- [ ] Register device push token with backend ([#33](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/33))
+- [ ] Implement weekly meal-plan reminder notification ([#33](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/33))
 - [ ] Implement "Your recipe is ready" notification (if generation is async)
 
 ### Onboarding
 
-- [ ] Design and build first-launch onboarding carousel
-- [ ] Collect dietary preferences during onboarding
+- [ ] Design and build first-launch onboarding carousel ([#30](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/30))
+- [ ] Collect dietary preferences during onboarding ([#30](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/30))
 - [ ] Show tutorial tooltip on first spin
 
 ### Performance & Polish
 
 - [ ] Profile and optimize cold-start time
-- [ ] Add skeleton loaders for recipe cards and result screen
+- [ ] Add skeleton loaders for recipe cards and result screen ([#32](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/32))
 - [ ] Implement image caching for recipe photos
-- [ ] Audit accessibility (VoiceOver / TalkBack) on all screens
+- [ ] Audit accessibility (VoiceOver / TalkBack) on all screens ([#29](https://github.com/DizzyDishApp/dizzy-dish-calm/issues/29))
 
 ---
 
