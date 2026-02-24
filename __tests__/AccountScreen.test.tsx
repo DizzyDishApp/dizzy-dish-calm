@@ -6,6 +6,7 @@ import { render, fireEvent, waitFor } from "@testing-library/react-native";
 const mockSignUp = jest.fn().mockResolvedValue({ error: null });
 const mockSignIn = jest.fn().mockResolvedValue({ error: null });
 const mockSignInWithGoogle = jest.fn().mockResolvedValue({ error: null });
+const mockSignInWithApple = jest.fn().mockResolvedValue({ error: null });
 const mockSignOut = jest.fn().mockResolvedValue(undefined);
 
 const defaultAuthState = {
@@ -23,6 +24,7 @@ jest.mock("@/context/AuthContext", () => ({
     signUp: mockSignUp,
     signIn: mockSignIn,
     signInWithGoogle: mockSignInWithGoogle,
+    signInWithApple: mockSignInWithApple,
     signOut: mockSignOut,
   }),
 }));
@@ -79,10 +81,10 @@ describe("AccountScreen — unauthenticated", () => {
   });
 
   it("renders social buttons", () => {
-    const { getByText } = render(<AccountScreen />);
+    const { getByText, queryByText } = render(<AccountScreen />);
     expect(getByText("GOOGLE")).toBeTruthy();
-    expect(getByText("FACEBOOK")).toBeTruthy();
     expect(getByText("APPLE")).toBeTruthy();
+    expect(queryByText("FACEBOOK")).toBeNull();
   });
 
   it("renders email input and GET STARTED button", () => {
@@ -252,6 +254,32 @@ describe("AccountScreen — unauthenticated", () => {
     const { getByLabelText } = render(<AccountScreen />);
     fireEvent.press(getByLabelText("Sign in with GOOGLE"));
     expect(mockSignInWithGoogle).toHaveBeenCalled();
+  });
+
+  it("apple button is visible on iOS", () => {
+    const { Platform } = require("react-native");
+    Platform.OS = "ios";
+    const { getByText } = render(<AccountScreen />);
+    expect(getByText("APPLE")).toBeTruthy();
+  });
+
+  it("apple button calls signInWithApple on press", () => {
+    const { Platform } = require("react-native");
+    Platform.OS = "ios";
+    const { getByLabelText } = render(<AccountScreen />);
+    fireEvent.press(getByLabelText("Sign in with APPLE"));
+    expect(mockSignInWithApple).toHaveBeenCalled();
+  });
+
+  it("apple button is hidden on Android", () => {
+    const { Platform } = require("react-native");
+    const originalOS = Platform.OS;
+    Platform.OS = "android";
+
+    const { queryByText } = render(<AccountScreen />);
+    expect(queryByText("APPLE")).toBeNull();
+
+    Platform.OS = originalOS;
   });
 });
 

@@ -58,6 +58,15 @@ jest.mock("@expo/vector-icons", () => {
   return { Ionicons };
 });
 
+// ── expo-apple-authentication mock ──
+jest.mock("expo-apple-authentication", () => ({
+  signInAsync: jest.fn(),
+  AppleAuthenticationScope: {
+    FULL_NAME: "FULL_NAME",
+    EMAIL: "EMAIL",
+  },
+}));
+
 // ── Supabase client mock ──
 jest.mock("@/lib/supabase", () => ({
   supabase: {
@@ -72,6 +81,7 @@ jest.mock("@/lib/supabase", () => ({
       signUp: jest.fn(),
       signInWithPassword: jest.fn(),
       signInWithOAuth: jest.fn(),
+      signInWithIdToken: jest.fn(),
       signOut: jest.fn(),
       setSession: jest.fn(),
     },
