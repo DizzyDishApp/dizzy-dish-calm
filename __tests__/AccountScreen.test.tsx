@@ -1,5 +1,6 @@
 import React from "react";
 import { render, fireEvent, waitFor } from "@testing-library/react-native";
+import type { User } from "@/types";
 
 // ── Mock context hooks ──
 
@@ -10,8 +11,8 @@ const mockSignInWithApple = jest.fn().mockResolvedValue({ error: null });
 const mockSignOut = jest.fn().mockResolvedValue(undefined);
 
 const defaultAuthState = {
-  user: null,
-  session: null,
+  user: null as User | null,
+  session: null as object | null,
   isLoading: false,
   isAuthenticated: false,
 };

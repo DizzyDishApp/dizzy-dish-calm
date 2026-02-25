@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx expo install expo-web-browser expo-crypto)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(python3:*)",
+      "Bash(npx jest:*)",
+      "WebFetch(domain:spoonacular.com)",
+      "Bash(git checkout:*)",
+      "Bash(npm run test:ci:*)",
+      "Bash(ls:*)",
+      "mcp__figma__create_design_system_rules",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr create:*)",
+      "Bash(brew list:*)",
+      "Bash(npx expo install:*)",
+      "Bash(npm test:*)",
+      "WebFetch(domain:www.themealdb.com)",
+      "WebFetch(domain:developer.edamam.com)",
+      "Bash(grep:*)",
+      "WebSearch",
+      "WebFetch(domain:openrecip.es)",
+      "WebFetch(domain:publicdomainrecipes.org)",
+      "WebFetch(domain:world.openfoodfacts.org)",
+      "WebFetch(domain:openfoodfacts.github.io)",
+      "Bash(eas:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm ci:*)",
+      "Bash(gh repo:*)",
+      "Bash(gh api:*)",
+      "Bash(gh auth:*)",
+      "Bash(gh project:*)",
+      "Bash(chmod +x:*)",
+      "Bash(bash:*)"
+    ]
+  }
+}

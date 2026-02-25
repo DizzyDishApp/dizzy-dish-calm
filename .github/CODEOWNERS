@@ -1,0 +1,11 @@
+# CODEOWNERS
+# Assign automatic reviewers for pull requests.
+# Last matching pattern takes precedence.
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything not matched below
+* @deejkelms
+
+# CI / repo configuration — require explicit review
+.github/                    @deejkelms
+.claude/                    @deejkelms
