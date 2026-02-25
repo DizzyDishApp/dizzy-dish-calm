@@ -49,3 +49,6 @@ yarn-error.log*
 # Temporary files
 *.tmp
 *.temp
+
+# Claude Code — local-only settings (team settings live in .claude/settings.json)
+.claude/settings.local.json

@@ -13,7 +13,7 @@ import type { Recipe, DietaryFilter } from "@/types";
 
 // Mutable state for context mocks
 let mockIsUserPro = false;
-let mockDietary: string[] = [];
+let mockDietary: DietaryFilter[] = [];
 
 jest.mock("@/context/PreferencesContext", () => ({
   usePreferences: () => ({
