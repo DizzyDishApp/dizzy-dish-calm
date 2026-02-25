@@ -162,6 +162,47 @@ See `lib/CLAUDE.md` → RevenueCat Integration for full setup instructions inclu
 
 ---
 
+## Error Handling & Retry Logic
+
+All API errors are normalized into a typed `ApiError` class before surfacing to React Query or the UI. This means no raw Supabase error strings leak to the user, and retries are always appropriate for the error type.
+
+### ApiError
+
+Defined in `types/index.ts`. Every thrown error from `lib/api.ts` is an `ApiError` with:
+
+| Field | Type | Description |
+|---|---|---|
+| `code` | `ApiErrorCode` | Structured error category (see below) |
+| `message` | `string` | Technical message (for logs) |
+| `status` | `number?` | HTTP status if applicable |
+
+### Error codes
+
+| Code | Retryable | User message |
+|---|---|---|
+| `AUTH_ERROR` | No | "Please sign in again to continue." |
+| `PERMISSION_ERROR` | No | "You don't have permission to do that." |
+| `NOT_FOUND_ERROR` | No | "That item could not be found." |
+| `NETWORK_ERROR` | Yes | "Check your connection and try again." |
+| `SERVER_ERROR` | Yes | "Something went wrong on our end. Try again in a moment." |
+| `EMPTY_POOL` | Yes | "Something went wrong. Please try again." |
+| `NO_MATCHING_RECIPES` | Yes | "Something went wrong. Please try again." |
+| `UNKNOWN_ERROR` | Yes | "Something went wrong. Please try again." |
+
+### Retry / backoff
+
+`lib/queryClient.ts` uses smart retry functions from `lib/errors.ts`:
+
+- **Queries:** up to 3 retries for retryable errors; non-retryable errors are never retried
+- **Mutations:** up to 1 retry for retryable errors
+- **Delay:** exponential backoff — 1 s → 2 s → 4 s → 8 s → capped at 10 s
+
+### Toast feedback
+
+Save/unsave mutations (`hooks/useSavedRecipes.ts`) show an error toast via `UIContext` when a mutation fails after retries. The toast message is derived from `toUserMessage(err.code)` in `lib/errors.ts`.
+
+---
+
 ## Getting Started
 
 ### Prerequisites
@@ -408,7 +449,7 @@ lib/                        API fetchers, query config, helpers
 constants/                  Colors, typography tokens
 types/                      Shared TypeScript interfaces
 assets/                     Fonts, images
-__tests__/                  Test files (Jest + React Testing Library) — 111 tests, 11 suites
+__tests__/                  Test files (Jest + React Testing Library) — 174 tests, 13 suites
 .github/workflows/          CI workflows (GitHub Actions)
 ```
 
@@ -461,6 +502,8 @@ __tests__/
   test-utils.tsx                  ← Shared helpers (QueryClient wrapper, re-exports)
   AuthContextReducer.test.ts      ← Pure unit tests (reducer, helpers)
   api.checkEmailExists.test.ts    ← API helper tests (supabase mock)
+  api.errorHandling.test.ts       ← Typed error tests for lib/api.ts functions
+  errors.test.ts                  ← Unit tests for lib/errors.ts helpers
   PrimaryButton.test.tsx          ← Component tests
   SocialButton.test.tsx           ← Component tests
   InputField.test.tsx             ← Component tests
@@ -472,7 +515,7 @@ __tests__/
   useSpinRecipe.test.tsx          ← Spin mutations: success, empty pool, filter mismatch
 ```
 
-111 tests passing across 11 suites. Run `npm test` to verify.
+174 tests passing across 13 suites. Run `npm test` to verify.
 
 ### Writing New Tests
 

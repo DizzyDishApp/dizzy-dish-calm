@@ -8,6 +8,8 @@ import { RecipeCard } from "@/components/RecipeCard";
 import { useSavedRecipes, useUnsaveRecipe } from "@/hooks/useSavedRecipes";
 import { queryKeys } from "@/lib/queryKeys";
 import { Colors } from "@/constants/colors";
+import { ApiError } from "@/types";
+import { toUserMessage } from "@/lib/errors";
 
 /**
  * Saved recipes screen.
@@ -33,7 +35,7 @@ export default function SavedScreen() {
         <View className="flex-1 items-center justify-center px-xl">
           <Text className="font-body text-sm text-txt-soft text-center">
             Something went wrong loading your recipes.{"\n"}
-            {error?.message}
+            {error instanceof ApiError ? toUserMessage(error.code) : "Please try again."}
           </Text>
         </View>
       ) : !recipes || recipes.length === 0 ? (

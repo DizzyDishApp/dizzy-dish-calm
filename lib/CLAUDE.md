@@ -1,5 +1,63 @@
 # lib/ — Backend & API Guide
 
+## Error Handling
+
+### Architecture
+
+All errors from `lib/api.ts` are normalized into a typed `ApiError` before being thrown. This gives React Query and the UI a structured error to work with instead of raw Supabase strings.
+
+```
+lib/errors.ts         → classifyError, isRetryable, toUserMessage, retry builders, delay fn
+types/index.ts        → ApiError class + ApiErrorCode union type
+lib/api.ts            → throws ApiError / classifyError(supabaseError) everywhere
+lib/queryClient.ts    → retry + retryDelay wired to buildRetryFunction / computeRetryDelay
+hooks/useSavedRecipes → showToast(toUserMessage(err.code), "error") in onError
+```
+
+### lib/errors.ts exports
+
+| Function | Signature | Notes |
+|---|---|---|
+| `classifyError(err)` | `(unknown) → ApiError` | Passthrough if already ApiError; inspects `.status` / `.code` on Supabase errors |
+| `isRetryable(code)` | `(ApiErrorCode) → boolean` | false for AUTH/PERMISSION/NOT_FOUND; true for NETWORK/SERVER/UNKNOWN |
+| `toUserMessage(code)` | `(ApiErrorCode) → string` | Human-facing string suitable for a toast |
+| `buildRetryFunction(n)` | `(number=3) → RetryFn` | Use as `queries.retry` in QueryClient |
+| `buildMutationRetryFunction()` | `() → RetryFn` | Same as buildRetryFunction(1) |
+| `computeRetryDelay(attempt)` | `(number) → ms` | 1-based; 1s → 2s → 4s → … capped at 10s |
+
+### Supabase error classification
+
+`classifyError` inspects the raw Supabase/PostgREST error object's `.status` and `.code` fields:
+
+| Condition | ApiErrorCode |
+|---|---|
+| `instanceof ApiError` | passthrough |
+| `instanceof TypeError` | `NETWORK_ERROR` |
+| `.code === "PGRST116"` | `NOT_FOUND_ERROR` |
+| `.status === 401` | `AUTH_ERROR` |
+| `.status === 403` | `PERMISSION_ERROR` |
+| `.status >= 500` | `SERVER_ERROR` |
+| anything else | `UNKNOWN_ERROR` |
+
+### Adding error handling to a new API function
+
+```ts
+import { ApiError } from "@/types";
+import { classifyError } from "@/lib/errors";
+
+export async function myNewFunction(): Promise<Result> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new ApiError("AUTH_ERROR", "Not authenticated", 401);
+
+  const { data, error } = await supabase.from("my_table").select("*");
+  if (error) throw classifyError(error);
+
+  return data;
+}
+```
+
+---
+
 ## Supabase Guide
 
 ### Overview
