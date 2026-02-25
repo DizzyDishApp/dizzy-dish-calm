@@ -25,6 +25,13 @@ export function classifyError(err: unknown): ApiError {
     const status = typeof e.status === "number" ? e.status : undefined;
     const message = String(e.message ?? "An error occurred");
 
+    // Supabase PostgREST catches fetch TypeErrors and returns them as plain
+    // error objects, losing the instanceof TypeError. Detect by message.
+    const lower = message.toLowerCase();
+    if (lower.includes("network request failed") || lower.includes("failed to fetch")) {
+      return new ApiError("NETWORK_ERROR", message);
+    }
+
     if (status === 401) return new ApiError("AUTH_ERROR", message, status);
     if (status === 403) return new ApiError("PERMISSION_ERROR", message, status);
     if (status !== undefined && status >= 500) {

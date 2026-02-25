@@ -50,6 +50,15 @@ describe("classifyError", () => {
     expect(result.code).toBe("NOT_FOUND_ERROR");
   });
 
+  it("classifies Supabase-wrapped TypeError (network message) as NETWORK_ERROR", () => {
+    // Supabase PostgREST catches fetch TypeErrors and re-wraps them as plain
+    // objects, losing instanceof TypeError — detect by message pattern instead.
+    const err = { message: "Network request failed" };
+    const result = classifyError(err);
+    expect(result).toBeInstanceOf(ApiError);
+    expect(result.code).toBe("NETWORK_ERROR");
+  });
+
   it("classifies generic Error with no status as UNKNOWN_ERROR", () => {
     const err = new Error("Something went wrong");
     const result = classifyError(err);
