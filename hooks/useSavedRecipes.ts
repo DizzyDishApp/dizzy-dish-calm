@@ -1,6 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchSavedRecipes, saveRecipe, unsaveRecipe } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
+import { useUI } from "@/context/UIContext";
+import { ApiError } from "@/types";
+import { toUserMessage } from "@/lib/errors";
 import type { Recipe } from "@/types";
 
 interface OptimisticContext {
@@ -20,9 +23,11 @@ export function useSavedRecipes() {
 /**
  * Mutation hook for saving a recipe.
  * Uses optimistic update to immediately show the saved state.
+ * Shows an error toast if the save fails.
  */
 export function useSaveRecipe() {
   const queryClient = useQueryClient();
+  const { showToast } = useUI();
 
   return useMutation<
     void,
@@ -42,10 +47,15 @@ export function useSaveRecipe() {
       ]);
       return { previous };
     },
-    onError: (_err, _vars, context) => {
+    onError: (err, _vars, context) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.recipes.saved(), context.previous);
       }
+      const msg =
+        err instanceof ApiError
+          ? toUserMessage(err.code)
+          : "Something went wrong saving that recipe.";
+      showToast(msg, "error");
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.recipes.saved() });
@@ -55,9 +65,12 @@ export function useSaveRecipe() {
 
 /**
  * Mutation hook for unsaving a recipe.
+ * Uses optimistic update to immediately hide the recipe.
+ * Shows an error toast if the unsave fails.
  */
 export function useUnsaveRecipe() {
   const queryClient = useQueryClient();
+  const { showToast } = useUI();
 
   return useMutation<void, Error, string, OptimisticContext>({
     mutationFn: unsaveRecipe,
@@ -71,10 +84,15 @@ export function useUnsaveRecipe() {
       );
       return { previous };
     },
-    onError: (_err, _vars, context) => {
+    onError: (err, _vars, context) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.recipes.saved(), context.previous);
       }
+      const msg =
+        err instanceof ApiError
+          ? toUserMessage(err.code)
+          : "Something went wrong removing that recipe.";
+      showToast(msg, "error");
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.recipes.saved() });

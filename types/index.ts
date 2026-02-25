@@ -134,3 +134,30 @@ export type RootStackParamList = {
 // ── Theme Types ──
 
 export type ThemeMode = "light" | "dark";
+
+// ── Error Types ──
+
+export type ApiErrorCode =
+  | "AUTH_ERROR"
+  | "PERMISSION_ERROR"
+  | "NOT_FOUND_ERROR"
+  | "NETWORK_ERROR"
+  | "SERVER_ERROR"
+  | "EMPTY_POOL"
+  | "NO_MATCHING_RECIPES"
+  | "UNKNOWN_ERROR";
+
+export class ApiError extends Error {
+  readonly code: ApiErrorCode;
+  readonly originalMessage: string;
+  readonly status?: number;
+
+  constructor(code: ApiErrorCode, message: string, status?: number) {
+    super(message);
+    this.name = "ApiError";
+    this.code = code;
+    this.originalMessage = message;
+    this.status = status;
+    Object.setPrototypeOf(this, ApiError.prototype);
+  }
+}

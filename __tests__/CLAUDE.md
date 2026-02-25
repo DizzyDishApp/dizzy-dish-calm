@@ -42,11 +42,13 @@ npm test -- --testPathPattern=MyThing   # Run a single file
 - Use `mock` prefix for mutable variables referenced inside `jest.mock()` factories
 - `react-test-renderer` must match `react` version (both 19.1.0 if using React 19)
 
-## Existing test coverage (111 tests across 11 suites)
+## Existing test coverage (174 tests across 13 suites)
 | File | What it tests | Tests |
 |---|---|---|
 | `AuthContextReducer.test.ts` | `authReducer`, `mapSupabaseUser` pure functions | 6 |
 | `api.checkEmailExists.test.ts` | `checkEmailExists` with supabase.rpc mock | 4 |
+| `api.errorHandling.test.ts` | Typed `ApiError` throws from all `lib/api.ts` functions | 13 |
+| `errors.test.ts` | `classifyError`, `isRetryable`, `toUserMessage`, retry builders, `computeRetryDelay` | 32 |
 | `PrimaryButton.test.tsx` | Rendering, loading state, press, a11y | 6 |
 | `SocialButton.test.tsx` | Provider labels, press, a11y | 5 |
 | `InputField.test.tsx` | Placeholder, input, props | 5 |
@@ -119,3 +121,10 @@ GitHub Actions runs `npm run test:ci` on every push to `main`/`feat/**`/`fix/**`
 **`react-native-safe-area-context` mock** — The built-in `.tsx` mock doesn't work well with this setup. Use a manual mock in `jest.setup.js`. Also mock `react-native-css-interop/dist/runtime/third-party-libs/react-native-safe-area-context` for `maybeHijackSafeAreaProvider`.
 
 **Jest setup key** — Use `setupFiles` (not `setupFilesAfterSetup` or `setupFilesAfterFramework`) in `jest.config.js` / `package.json` jest config.
+
+**Circular mock self-reference** — `const eqMock = jest.fn().mockReturnValueOnce({ eq: eqMock })` does NOT work — Babel hoists `const` as `undefined`, so `eqMock` inside the object is `undefined`. Fix: create the mock on one line, then call `.mockReturnValueOnce` on the next:
+```ts
+const eqMock = jest.fn();
+eqMock.mockReturnValueOnce({ eq: eqMock }); // now eqMock is defined
+eqMock.mockResolvedValueOnce({ error: ... });
+```
