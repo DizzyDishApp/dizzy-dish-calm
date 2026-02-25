@@ -89,6 +89,14 @@ export default function RootLayout() {
               options={{ animation: "slide_from_bottom" }}
             />
             <Stack.Screen
+              name="auth"
+              options={{ animation: "none" }}
+            />
+            <Stack.Screen
+              name="auth/callback"
+              options={{ animation: "none" }}
+            />
+            <Stack.Screen
               name="(modal)"
               options={{
                 presentation: "modal",

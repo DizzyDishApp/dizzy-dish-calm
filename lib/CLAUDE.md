@@ -62,11 +62,16 @@ Google sign-in uses `supabase.auth.signInWithOAuth` + `expo-web-browser`:
 
 **Supabase config required:**
 - Google provider enabled with Web Client ID + Secret
-- `dizzydish://auth/callback` in Redirect URLs (and `exp://` variant for dev)
+- `dizzydish://auth` **and** `dizzydish://auth/callback` in Redirect URLs (and `exp://` variant for dev)
+  - Android dev builds have been observed redirecting to `dizzydish://auth` rather than `dizzydish://auth/callback` — both must be allowed
 
 **Google Cloud Console config required:**
 - Web OAuth 2.0 Client ID with `https://<project>.supabase.co/auth/v1/callback` as authorized redirect URI
 - OAuth consent screen configured with authorized domains, test users (if in Testing mode)
+
+**Android callback screens:**
+- `app/auth.tsx` — handles `dizzydish://auth` deep links (observed on Android dev builds). Calls `WebBrowser.maybeCompleteAuthSession()` to close Chrome Custom Tabs, then exchanges tokens via PKCE (`exchangeCodeForSession`) or implicit flow (`setSession`). Falls through to `/` if the session was already established by `signInWithGoogle()`.
+- `app/auth/callback.tsx` — handles `dizzydish://auth/callback` deep links. Same token exchange logic. On iOS, `ASWebAuthenticationSession` intercepts the redirect before it fires as a deep link, so neither screen is reached on iOS.
 
 **Known limitation:** OAuth does not work in Expo Go. Requires a development build (`npx expo run:ios` / `run:android`).
 
