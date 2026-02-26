@@ -22,6 +22,7 @@ import {
 } from "@expo-google-fonts/plus-jakarta-sans";
 import { AppProviders } from "@/providers";
 import { Toast } from "@/components/Toast";
+import { initRevenueCat } from "@/lib/revenueCat";
 
 import "../global.css";
 
@@ -55,6 +56,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
+      initRevenueCat();
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
