@@ -233,7 +233,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      // Network error: Supabase did not clear the local session.
+      // Clear it manually so sign-out always works offline.
+      // The server-side token will expire naturally.
+      dispatch({ type: "CLEAR_SESSION" });
+      logOutRevenueCat();
+    }
+    // On success, onAuthStateChange fires and handles CLEAR_SESSION + logOutRevenueCat
   };
 
   return (

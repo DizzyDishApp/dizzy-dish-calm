@@ -1,6 +1,8 @@
 import { supabase } from "@/lib/supabase";
 import { queryKeys } from "@/lib/queryKeys";
 import { buildPoolFingerprint, passesTimeFilter, passesCalorieFilter } from "@/lib/spoonacular";
+import { ApiError } from "@/types";
+import { classifyError } from "@/lib/errors";
 import type { QueryClient } from "@tanstack/react-query";
 import type {
   Recipe,
@@ -48,7 +50,8 @@ export function drawRecipeFromPool(
   );
 
   if (!pool || pool.length === 0) {
-    throw new Error(
+    throw new ApiError(
+      "EMPTY_POOL",
       "No recipes available yet — the pool is still loading. Please try again."
     );
   }
@@ -60,7 +63,8 @@ export function drawRecipeFromPool(
   );
 
   if (filtered.length === 0) {
-    throw new Error(
+    throw new ApiError(
+      "NO_MATCHING_RECIPES",
       "No recipes match your current filters. Try adjusting your time or calorie preferences."
     );
   }
@@ -81,7 +85,8 @@ export function drawWeeklyPlanFromPool(
   );
 
   if (!pool || pool.length === 0) {
-    throw new Error(
+    throw new ApiError(
+      "EMPTY_POOL",
       "No recipes available yet — the pool is still loading. Please try again."
     );
   }
@@ -93,7 +98,8 @@ export function drawWeeklyPlanFromPool(
   );
 
   if (filtered.length < 7) {
-    throw new Error(
+    throw new ApiError(
+      "NO_MATCHING_RECIPES",
       "Not enough recipes match your filters for a 7-day plan. Try adjusting your preferences."
     );
   }
@@ -185,7 +191,7 @@ export async function fetchSavedRecipes(): Promise<Recipe[]> {
     .eq("user_id", session.user.id)
     .order("created_at", { ascending: false });
 
-  if (error) throw new Error(error.message);
+  if (error) throw classifyError(error);
   return (data ?? []).map((row) => row.recipe_data as Recipe);
 }
 
@@ -194,7 +200,7 @@ export async function saveRecipe(
   recipe: Recipe
 ): Promise<void> {
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error("Not authenticated");
+  if (!session) throw new ApiError("AUTH_ERROR", "Not authenticated", 401);
 
   const { error } = await supabase.from("saved_recipes").upsert(
     {
@@ -205,12 +211,12 @@ export async function saveRecipe(
     { onConflict: "user_id,recipe_id" }
   );
 
-  if (error) throw new Error(error.message);
+  if (error) throw classifyError(error);
 }
 
 export async function unsaveRecipe(recipeId: string): Promise<void> {
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error("Not authenticated");
+  if (!session) throw new ApiError("AUTH_ERROR", "Not authenticated", 401);
 
   const { error } = await supabase
     .from("saved_recipes")
@@ -218,7 +224,7 @@ export async function unsaveRecipe(recipeId: string): Promise<void> {
     .eq("user_id", session.user.id)
     .eq("recipe_id", recipeId);
 
-  if (error) throw new Error(error.message);
+  if (error) throw classifyError(error);
 }
 
 // ── User Profile (Supabase) ──
@@ -226,7 +232,7 @@ export async function unsaveRecipe(recipeId: string): Promise<void> {
 export async function fetchUserProfile(): Promise<User> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {
-    throw new Error("Not authenticated");
+    throw new ApiError("AUTH_ERROR", "Not authenticated", 401);
   }
 
   const { data, error } = await supabase
@@ -235,7 +241,7 @@ export async function fetchUserProfile(): Promise<User> {
     .eq("id", session.user.id)
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) throw classifyError(error);
 
   return {
     id: data.id,
@@ -263,10 +269,11 @@ export async function fetchSubscription(): Promise<SubscriptionPlan> {
 export async function updateUserProStatus(isPro: boolean): Promise<void> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return;
-  await supabase
+  const { error } = await supabase
     .from("profiles")
     .update({ is_pro: isPro })
     .eq("id", session.user.id);
+  if (error) throw classifyError(error);
 }
 
 // ── Instacart Fetchers (still mocked) ──
