@@ -11,6 +11,7 @@
       "Bash(npm run test:ci:*)",
       "Bash(ls:*)",
       "mcp__figma__create_design_system_rules",
+      "mcp__figma__generate_figma_design",
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
