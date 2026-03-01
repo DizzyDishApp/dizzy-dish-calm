@@ -87,7 +87,7 @@ export type DietaryFilter =
   | "Low FODMAP";
 
 export type TimeFilter = "Under 30 Min" | "Under 60 Min" | "Any";
-export type CalorieFilter = "Light" | "Moderate" | "Hearty";
+export type CalorieFilter = "Any" | "Light" | "Moderate" | "Hearty";
 
 export interface UserPreferences {
   dietary: Set<DietaryFilter>;

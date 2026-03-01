@@ -42,7 +42,7 @@ npm test -- --testPathPattern=MyThing   # Run a single file
 - Use `mock` prefix for mutable variables referenced inside `jest.mock()` factories
 - `react-test-renderer` must match `react` version (both 19.1.0 if using React 19)
 
-## Existing test coverage (174 tests across 13 suites)
+## Existing test coverage (207 tests across 16 suites)
 | File | What it tests | Tests |
 |---|---|---|
 | `AuthContextReducer.test.ts` | `authReducer`, `mapSupabaseUser` pure functions | 6 |
@@ -58,6 +58,9 @@ npm test -- --testPathPattern=MyThing   # Run a single file
 | `useGuestSpinLimit.test.ts` | Guest spin limit: increment, daily reset, limit reached | varies |
 | `useRecipePool.test.tsx` | Pool fetch, cache key fingerprint, tier switching | varies |
 | `useSpinRecipe.test.tsx` | `drawRecipeFromPool` / `drawWeeklyPlanFromPool`: success, empty pool, filter mismatch | varies |
+| `Toggle.test.tsx` | Render, toggle behavior, haptics, a11y, color variants | 9 |
+| `SpinButton.test.tsx` | Render, label/hints, press/disabled, a11y, dimensions | 10 |
+| `HomeScreen.test.tsx` | Heading, nav tabs, weekly mode, context line filters, filter indicator | 13 |
 
 ## Adding a new test
 

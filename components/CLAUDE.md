@@ -59,7 +59,7 @@ interface Props {
 | `Avatar` | User avatar | `size: "small" \| "large"`, `uri?` |
 | `ConfettiEmoji` | Floating food emoji animation | — |
 | `FilterPill` | On/off dietary filter toggle | `label`, `selected`, `onPress` |
-| `GearButton` | Settings gear icon | `onPress` |
+| `GearButton` | Settings gear icon (legacy — replaced by hamburger menu on home screen) | `onPress` |
 | `HeaderBar` | Shared header with back + title | `title`, `onBack?` |
 | `HeartButton` | Heart/save toggle | `saved`, `onPress` |
 | `InputField` | Styled TextInput (forwardRef) | Standard TextInput props |
@@ -70,11 +70,11 @@ interface Props {
 | `SecondaryButton` | Secondary action | `variant: "cream" \| "warmPale" \| "ghost"` |
 | `SmartGroceryCard` | Weekly plan shared ingredients callout | `ingredients` |
 | `SocialButton` | Social auth button | `provider: "google" \| "facebook" \| "apple"`, `onPress` |
-| `SpinButton` | Hero spin button with calmPulse animation | `onPress`, `isSpinning` |
+| `SpinButton` | Hero spin button with 3D press, pulse rings, depth base | `onPress`, `weeklyMode`, `disabled?` |
 | `SpinningOverlay` | Full-screen spin animation overlay | `visible` |
 | `TagChip` | Recipe tag label chip | `label` |
 | `Toast` | Auto-dismissing toast | `message`, `variant: "default" \| "error"` |
-| `Toggle` | Toggle switch | `variant: "warm" \| "green"`, `value`, `onValueChange` |
+| `Toggle` | Toggle switch (explicit style layout, 44x24px track) | `variant: "warm" \| "green"`, `value`, `onToggle` |
 | `WeeklyDayRow` | Single day row in weekly plan | `day`, `recipe` |
 
 ---
@@ -118,17 +118,12 @@ import Animated, { FadeInDown, FadeOut } from "react-native-reanimated";
 >
 ```
 
-### Looping Animations (calmPulse — SpinButton idle)
+### Pulse Rings (SpinButton idle)
 ```tsx
-const scale = useSharedValue(1);
-scale.value = withRepeat(
-  withSequence(
-    withTiming(1.03, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
-    withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.ease) })
-  ),
-  -1, // infinite
-  true
-);
+// Two staggered PulseRing components behind the button.
+// Each ring: scale 1→1.35 over 2400ms, opacity fades in 0→0.3 (600ms) then out 0.3→0 (1800ms).
+// Stagger: delay={0} and delay={1200} for a breathing rhythm.
+// Uses withRepeat(-1, false) — no reverse, smooth restart via 0-duration reset.
 ```
 
 ### Spin Animation
@@ -147,7 +142,8 @@ opacity.value = withDelay(delay, withTiming(0, { duration: 1500 }));
 ```
 
 ### Named animation patterns
-- **calmPulse** — SpinButton idle: scale 1→1.03 loop
+- **pulseRing** — SpinButton idle: 2 staggered rings, scale 1→1.35, fade in/out breathing
+- **3dPress** — SpinButton press: translateY 0→5px, shadow collapses (80ms in, 200ms out)
 - **gentleUp** — Content entrance: `FadeInDown` with staggered delays
 - **slideUp** — Result cards: `SlideInDown`
 - **spinWheel** — Spin sequence: rotation 0→1080deg cubic-bezier

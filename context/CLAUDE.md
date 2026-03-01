@@ -8,7 +8,7 @@
 | `AuthRedirectContext` | `context/AuthRedirectContext.tsx` | Post-auth redirect: captures route + pending action before auth, replays after sign-in. Persisted to AsyncStorage for OAuth backgrounding. |
 | `ThemeContext` | `context/ThemeContext.tsx` | Light/dark mode preference, persisted to AsyncStorage |
 | `UIContext` | `context/UIContext.tsx` | Ephemeral UI state: isSpinning overlay, toast messages |
-| `PreferencesContext` | `context/PreferencesContext.tsx` | Dietary filters, time/calorie preferences, weekly mode — persisted to AsyncStorage. **Does NOT contain Pro status** (use `useUserProfile().data?.isPro`) |
+| `PreferencesContext` | `context/PreferencesContext.tsx` | Dietary filters, time/calorie preferences, weekly mode — persisted to AsyncStorage with schema versioning (`PREFS_VERSION`). Defaults: time "Any", calories "Any", empty dietary. **Does NOT contain Pro status** (use `useUserProfile().data?.isPro`) |
 
 ## Consuming a context
 
