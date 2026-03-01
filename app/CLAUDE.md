@@ -16,7 +16,12 @@ Stack-first model using **Expo Router** with file-based routing:
 - `result.tsx` and `weekly-result.tsx` slide up from the bottom after a spin
 - `saved.tsx` pushes on the stack
 - `(modal)/` group presents settings, account, instacart as modal sheets
-- `(tabs)/` is scaffolded for future expansion — not the primary nav pattern
+
+### Home Screen Navigation
+The home screen uses a **3-tab pill nav** at the bottom (me / spin / saved) instead of a tab navigator. The pill bar is a static View — "spin" is always active on the home screen. "me" opens the account modal, "saved" pushes to the saved recipes screen. The settings/preferences screen is accessed via a **hamburger menu** icon in the top-right, which shows a warm dot indicator when active filters are set.
+
+### Context Line
+A context line appears above the spin button showing the user's active filter summary (e.g. "< 30 min · Light · Vegan"). It only appears when filters differ from the defaults (time: "Any", calories: "Any", no dietary filters).
 
 ### Adding a new route
 1. Create `app/my-route.tsx`

@@ -25,7 +25,7 @@ const DIETARY_FILTERS: DietaryFilter[] = [
   "Keto", "Paleo", "Pescatarian", "Low FODMAP",
 ];
 const TIME_FILTERS: TimeFilter[] = ["Under 30 Min", "Under 60 Min", "Any"];
-const CALORIE_FILTERS: CalorieFilter[] = ["Light", "Moderate", "Hearty"];
+const CALORIE_FILTERS: CalorieFilter[] = ["Light", "Moderate", "Hearty", "Any"];
 
 export default function SettingsScreen() {
   const router = useRouter();

@@ -8,7 +8,7 @@ Dizzy Dish is a mobile recipe decision app designed for the overwhelmed parent a
 1. **Single Spin** — Tap spin → animated sequence → recipe result with details, tags, ingredient ordering
 2. **Weekly Plan** — Toggle weekly mode → spin → 7-day plan with shared ingredient optimization → Instacart
 3. **Save/Unsave Recipes** — Heart toggle on any result
-4. **Preferences** — Dietary filters (19 options), time, calories; Pro users get persistent preferences
+4. **Preferences** — Dietary filters (19 options), time (Any/Under 30/Under 60), calories (Any/Light/Moderate/Hearty); Pro users get persistent preferences
 5. **Account** — Identifier-first email auth via Supabase, Google OAuth, post-auth redirect
 6. **Instacart Integration** — One-tap ingredient ordering from recipe results
 

@@ -38,11 +38,11 @@ export function HeaderBar({
       {showBack ? (
         <Pressable
           onPress={handleBack}
-          className="w-7 h-7 items-center justify-center opacity-40"
+          className="w-12 h-12 items-center justify-center opacity-40"
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Ionicons name="chevron-back" size={16} color={Colors.text} />
+          <Ionicons name="chevron-back" size={24} color={Colors.text} />
         </Pressable>
       ) : (
         <View className="w-7" />

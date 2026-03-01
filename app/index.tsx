@@ -2,12 +2,11 @@ import React, { useCallback, useRef } from "react";
 import { View, Text, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, { FadeInDown, FadeOut } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { SpinButton } from "@/components/SpinButton";
 import { Toggle } from "@/components/Toggle";
-import { Avatar } from "@/components/Avatar";
-import { GearButton } from "@/components/GearButton";
 import { useAuth } from "@/context/AuthContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useUserProfile } from "@/hooks/useUserProfile";
@@ -17,6 +16,8 @@ import { useSpinRecipe, useSpinWeeklyPlan } from "@/hooks/useSpinRecipe";
 import { useRecipePool } from "@/hooks/useRecipePool";
 import { useGuestSpinLimit } from "@/hooks/useGuestSpinLimit";
 import { SpinningOverlay } from "@/components/SpinningOverlay";
+import { Colors } from "@/constants/colors";
+import { haptic } from "@/lib/haptics";
 
 const logo = require("@/assets/images/logo.png");
 
@@ -26,7 +27,7 @@ const logo = require("@/assets/images/logo.png");
  * "Designed for the parent at 6:30pm. One button. One answer. No noise."
  *
  * Server state: useRecipePool (Spoonacular), useSpinRecipe/useSpinWeeklyPlan mutations
- * Client state: PreferencesContext (weeklyMode, dietary, time, calories, isPro),
+ * Client state: PreferencesContext (weeklyMode, dietary, time, calories),
  *               UIContext (isSpinning), useGuestSpinLimit
  */
 export default function HomeScreen() {
@@ -99,7 +100,6 @@ export default function HomeScreen() {
   }, [prefs, request, pool.isLoading, pool.isError, pool.data, spinRecipe, spinWeeklyPlan, setSpinning, auth.isAuthenticated, incrementSpinCount]);
 
   // Called when the spinning animation completes — navigate to the result screen
-  // and pass the recipe/plan ID so the result screen can read it from the RQ cache.
   const handleSpinComplete = useCallback(() => {
     setSpinning(false);
     if (prefs.weeklyMode) {
@@ -117,6 +117,16 @@ export default function HomeScreen() {
     }
   }, [prefs.weeklyMode, router, setSpinning]);
 
+  // Active filters drive the hamburger indicator + context line
+  const hasActiveFilters =
+    prefs.time !== "Any" || prefs.calories !== "Any" || prefs.dietary.size > 0;
+
+  const contextParts: string[] = [];
+  if (prefs.time !== "Any")
+    contextParts.push(prefs.time === "Under 30 Min" ? "< 30 min" : "< 60 min");
+  if (prefs.calories !== "Any") contextParts.push(prefs.calories);
+  prefs.dietary.forEach((f) => contextParts.push(f));
+
   // Show spinning overlay
   if (ui.isSpinning) {
     return <SpinningOverlay onComplete={handleSpinComplete} />;
@@ -127,18 +137,56 @@ export default function HomeScreen() {
   return (
     <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
       <View className="flex-1 px-xl">
-        {/* Top bar */}
+
+        {/* ── Top bar ──────────────────────────────────────────────────── */}
         <View className="flex-row justify-between items-center py-1">
+          {/* Logo — contentPosition="left" anchors content to avoid inner whitespace offset */}
           <Image
             source={logo}
             style={{ width: 120, height: 40 }}
             contentFit="contain"
+            contentPosition="left"
             accessibilityLabel="Dizzy Dish logo"
           />
-          <GearButton onPress={() => router.push("/(modal)/settings")} />
+
+          {/* Hamburger menu with active filter indicator */}
+          <Pressable
+            onPress={() => { haptic.light(); router.push("/(modal)/settings"); }}
+            accessibilityRole="button"
+            accessibilityLabel={hasActiveFilters ? "Menu — filters active" : "Menu"}
+          >
+            <View
+              style={{
+                width: 36,
+                height: 36,
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: 18,
+                borderWidth: hasActiveFilters ? 1.5 : 0,
+                borderColor: hasActiveFilters ? Colors.warm : "transparent",
+              }}
+            >
+              <Ionicons name="menu-outline" size={20} color={Colors.text} />
+              {hasActiveFilters && (
+                <View
+                  style={{
+                    position: "absolute",
+                    top: -2,
+                    right: -2,
+                    width: 8,
+                    height: 8,
+                    backgroundColor: Colors.warm,
+                    borderRadius: 4,
+                    borderWidth: 1.5,
+                    borderColor: Colors.bg,
+                  }}
+                />
+              )}
+            </View>
+          </Pressable>
         </View>
 
-        {/* Heading */}
+        {/* ── Heading ──────────────────────────────────────────────────── */}
         <Animated.View
           entering={FadeInDown.duration(600).springify()}
           className="mt-hero"
@@ -148,10 +196,11 @@ export default function HomeScreen() {
           </Text>
         </Animated.View>
 
-        {/* Weekly toggle */}
+        {/* ── Weekly / single toggle ────────────────────────────────────── */}
         <Animated.View
           entering={FadeInDown.delay(100).duration(600).springify()}
           className="flex-row items-center gap-2.5 mt-lg"
+          style={{ alignSelf: "flex-start" }}
         >
           <Toggle
             value={prefs.weeklyMode}
@@ -168,8 +217,21 @@ export default function HomeScreen() {
           </Text>
         </Animated.View>
 
-        {/* Spin button — THE main event */}
+        {/* ── Spin button — THE main event ─────────────────────────────── */}
         <View className="flex-1 items-center justify-center">
+          {/* Context line — pre-spin confirmation, just above the button */}
+          {contextParts.length > 0 && (
+            <Animated.View
+              entering={FadeInDown.duration(300).springify()}
+              exiting={FadeOut.duration(200)}
+              style={{ width: "100%", marginBottom: 40 }}
+            >
+              <Text className="font-body text-[11px] text-txt-soft text-center">
+                {contextParts.join(" · ")}
+              </Text>
+            </Animated.View>
+          )}
+
           <Animated.View
             entering={FadeInDown.delay(200).duration(600).springify()}
           >
@@ -231,30 +293,56 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* Bottom bar: avatar left, saved center */}
+        {/* ── Bottom 3-tab pill nav ─────────────────────────────────────── */}
         <Animated.View
           entering={FadeInDown.delay(400).duration(600).springify()}
-          className="flex-row items-center pb-5"
+          className="pb-5 items-center"
         >
-          <Avatar size="small" onPress={() => {
-            if (!auth.isAuthenticated) setSnapshot("/");
-            router.push("/(modal)/account");
-          }} />
-          <View className="flex-1 items-center">
+          <View
+            className="flex-row rounded-btn"
+            style={{
+              backgroundColor: "rgba(245, 237, 229, 0.92)",
+              borderWidth: 1,
+              borderColor: Colors.border,
+              paddingVertical: 6,
+              paddingHorizontal: 6,
+              gap: 2,
+            }}
+          >
+            {/* Me tab */}
             <Pressable
-              onPress={() => router.push("/saved")}
-              className="px-5 py-2.5 rounded-btn bg-cream"
+              onPress={() => {
+                haptic.light();
+                if (!auth.isAuthenticated) setSnapshot("/");
+                router.push("/(modal)/account");
+              }}
+              style={{ alignItems: "center", paddingHorizontal: 20, paddingVertical: 6, gap: 3 }}
+              accessibilityRole="button"
+              accessibilityLabel="My account"
+            >
+              <Ionicons name="person-outline" size={18} color={Colors.textSoft} />
+              <Text className="font-body-medium text-[11px] text-txt-soft">me</Text>
+            </Pressable>
+
+            {/* Spin tab — always active on this screen */}
+            <View style={{ alignItems: "center", paddingHorizontal: 20, paddingVertical: 6, gap: 3 }}>
+              <Ionicons name="shuffle-outline" size={18} color={Colors.warm} />
+              <Text className="font-body-medium text-[11px] text-warm">spin</Text>
+            </View>
+
+            {/* Saved tab */}
+            <Pressable
+              onPress={() => { haptic.light(); router.push("/saved"); }}
+              style={{ alignItems: "center", paddingHorizontal: 20, paddingVertical: 6, gap: 3 }}
               accessibilityRole="button"
               accessibilityLabel="View saved recipes"
             >
-              <Text className="font-body-medium text-xs text-txt-soft">
-                saved recipes
-              </Text>
+              <Ionicons name="heart-outline" size={18} color={Colors.textSoft} />
+              <Text className="font-body-medium text-[11px] text-txt-soft">saved</Text>
             </Pressable>
           </View>
-          {/* Spacer to balance avatar */}
-          <View className="w-[38px]" />
         </Animated.View>
+
       </View>
     </SafeAreaView>
   );
