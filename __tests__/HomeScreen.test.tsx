@@ -1,12 +1,18 @@
 import React from "react";
 import { render } from "@testing-library/react-native";
+import type { TimeFilter, CalorieFilter } from "@/types";
 
 // ── Mocks ──
 
-let mockPrefs = {
+let mockPrefs: {
+  dietary: Set<string>;
+  time: TimeFilter;
+  calories: CalorieFilter;
+  weeklyMode: boolean;
+} = {
   dietary: new Set(),
-  time: "Any" as const,
-  calories: "Any" as const,
+  time: "Any",
+  calories: "Any",
   weeklyMode: false,
 };
 
