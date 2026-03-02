@@ -42,7 +42,7 @@ npm test -- --testPathPattern=MyThing   # Run a single file
 - Use `mock` prefix for mutable variables referenced inside `jest.mock()` factories
 - `react-test-renderer` must match `react` version (both 19.1.0 if using React 19)
 
-## Existing test coverage (207 tests across 16 suites)
+## Existing test coverage (224 tests across 18 suites)
 | File | What it tests | Tests |
 |---|---|---|
 | `AuthContextReducer.test.ts` | `authReducer`, `mapSupabaseUser` pure functions | 6 |
@@ -61,6 +61,8 @@ npm test -- --testPathPattern=MyThing   # Run a single file
 | `Toggle.test.tsx` | Render, toggle behavior, haptics, a11y, color variants | 9 |
 | `SpinButton.test.tsx` | Render, label/hints, press/disabled, a11y, dimensions | 10 |
 | `HomeScreen.test.tsx` | Heading, nav tabs, weekly mode, context line filters, filter indicator | 13 |
+| `SpinningOverlay.test.tsx` | InlineSpinWheel: renders, haptic at 2000ms, onComplete at 2400ms | 3 |
+| `SpinResultCard.test.tsx` | Recipe/plan variants, meta pills, HeartButton, button callbacks | 12 |
 
 ## Adding a new test
 

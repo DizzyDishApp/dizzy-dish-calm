@@ -20,8 +20,14 @@ Stack-first model using **Expo Router** with file-based routing:
 ### Home Screen Navigation
 The home screen uses a **3-tab pill nav** at the bottom (me / spin / saved) instead of a tab navigator. The pill bar is a static View — "spin" is always active on the home screen. "me" opens the account modal, "saved" pushes to the saved recipes screen. The settings/preferences screen is accessed via a **hamburger menu** icon in the top-right, which shows a warm dot indicator when active filters are set.
 
+### Home Screen Center Area — 3 States
+The center area cycles through three inline states (no navigation, no overlay):
+1. **Idle** — `SpinButton` with context line above and guest upsell below
+2. **Spinning** — `InlineSpinWheel` replaces the button in-place (context line stays visible)
+3. **Result** — `SpinResultCard` with recipe/plan summary, "View full recipe" navigates to `/result` or `/weekly-result`, "Spin again" resets to idle
+
 ### Context Line
-A context line appears above the spin button showing the user's active filter summary (e.g. "< 30 min · Light · Vegan"). It only appears when filters differ from the defaults (time: "Any", calories: "Any", no dietary filters).
+A context line appears above the spin button/wheel showing the user's active filter summary (e.g. "< 30 min · Light · Vegan"). It only appears when filters differ from the defaults (time: "Any", calories: "Any", no dietary filters). It persists during spinning and hides when the result card appears.
 
 ### Adding a new route
 1. Create `app/my-route.tsx`
