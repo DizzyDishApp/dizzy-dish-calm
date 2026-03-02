@@ -72,6 +72,12 @@ jest.mock("@/hooks/useGuestSpinLimit", () => ({
   }),
 }));
 
+jest.mock("@/hooks/useSavedRecipes", () => ({
+  useSavedRecipes: () => ({ data: [] }),
+  useSaveRecipe: () => ({ mutate: jest.fn() }),
+  useUnsaveRecipe: () => ({ mutate: jest.fn() }),
+}));
+
 jest.mock("expo-image", () => {
   const React = require("react");
   const { View } = require("react-native");

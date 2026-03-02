@@ -71,7 +71,8 @@ interface Props {
 | `SmartGroceryCard` | Weekly plan shared ingredients callout | `ingredients` |
 | `SocialButton` | Social auth button | `provider: "google" \| "facebook" \| "apple"`, `onPress` |
 | `SpinButton` | Hero spin button with 3D press, pulse rings, depth base | `onPress`, `weeklyMode`, `disabled?` |
-| `SpinningOverlay` | Full-screen spin animation overlay | `visible` |
+| `SpinningOverlay` | Inline spinning wheel (replaces SpinButton in-place during spin) | `onComplete` |
+| `SpinResultCard` | Compact result card (recipe or weekly plan variant) | `result`, `onViewFullRecipe`, `onSpinAgain`, `saved?`, `onToggleSave?` |
 | `TagChip` | Recipe tag label chip | `label` |
 | `Toast` | Auto-dismissing toast | `message`, `variant: "default" \| "error"` |
 | `Toggle` | Toggle switch (explicit style layout, 44x24px track) | `variant: "warm" \| "green"`, `value`, `onToggle` |
@@ -126,12 +127,14 @@ import Animated, { FadeInDown, FadeOut } from "react-native-reanimated";
 // Uses withRepeat(-1, false) — no reverse, smooth restart via 0-duration reset.
 ```
 
-### Spin Animation
+### Inline Spin Wheel (InlineSpinWheel)
 ```tsx
-rotation.value = withTiming(1080, {
-  duration: 700,
-  easing: Easing.bezier(0.4, 0, 0.2, 1),
-});
+// Single smooth rotation — 2160deg (6 turns) over 4s, linear easing.
+// No withRepeat — one continuous withTiming avoids frame-drop snap-backs.
+rotation.value = withTiming(2160, { duration: 4000, easing: Easing.linear });
+
+// At 2000ms: haptic.success(), bounce up (-20px) then slide down (40px) + fade out.
+// At 2400ms: onComplete() fires → parent swaps to SpinResultCard.
 ```
 
 ### Float-away (confFloat — ConfettiEmoji)
@@ -146,7 +149,8 @@ opacity.value = withDelay(delay, withTiming(0, { duration: 1500 }));
 - **3dPress** — SpinButton press: translateY 0→5px, shadow collapses (80ms in, 200ms out)
 - **gentleUp** — Content entrance: `FadeInDown` with staggered delays
 - **slideUp** — Result cards: `SlideInDown`
-- **spinWheel** — Spin sequence: rotation 0→1080deg cubic-bezier
+- **inlineWheel** — InlineSpinWheel: continuous 2160deg/4s linear rotation, bounce+fade exit at 2s
+- **resultCardEntry** — SpinResultCard: `FadeInDown.duration(400).springify()`
 - **confFloat** — Celebration: translateY/scale/opacity float-away
 - **loadingDots** — Button loading: 3 dots staggered `translateY` bounce
 
