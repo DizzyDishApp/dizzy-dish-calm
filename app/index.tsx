@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { View, Text, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
@@ -42,7 +42,7 @@ export default function HomeScreen() {
   const { state: prefs, setWeeklyMode } = usePreferences();
   const { state: auth } = useAuth();
   const { data: userProfile } = useUserProfile();
-  const { state: ui, setSpinning, showToast } = useUI();
+  const { setSpinning, showToast } = useUI();
   const { setSnapshot } = useAuthRedirect();
   const spinRecipe = useSpinRecipe();
   const spinWeeklyPlan = useSpinWeeklyPlan();
@@ -65,12 +65,12 @@ export default function HomeScreen() {
     if (pool.isSuccess) console.log('[index.tsx] pool loaded —', pool.data?.length, 'recipes');
   }
 
-  const request = {
+  const request = useMemo(() => ({
     dietary: Array.from(prefs.dietary),
     time: prefs.time,
     calories: prefs.calories,
     isPro: userProfile?.isPro ?? false,
-  };
+  }), [prefs.dietary, prefs.time, prefs.calories, userProfile?.isPro]);
 
   const handleSpin = useCallback(() => {
     if (__DEV__) {
@@ -114,7 +114,7 @@ export default function HomeScreen() {
         },
       });
     }
-  }, [prefs, request, pool.isLoading, pool.isError, pool.data, spinRecipe, spinWeeklyPlan, setSpinning, auth.isAuthenticated, incrementSpinCount]);
+  }, [prefs, request, pool.isLoading, pool.isError, pool.data, spinRecipe, spinWeeklyPlan, setSpinning, showToast, auth.isAuthenticated, incrementSpinCount]);
 
   // Wheel animation finished — stop spinning, show the result card
   const handleSpinComplete = useCallback(() => {
@@ -160,7 +160,7 @@ export default function HomeScreen() {
     } else {
       saveRecipe.mutate({ recipeId: spinResult.data.id, recipe: spinResult.data });
     }
-  }, [spinResult, isRecipeSaved, auth.isAuthenticated, savedRecipes, saveRecipe, unsaveRecipe, setSnapshot, router]);
+  }, [spinResult, isRecipeSaved, auth.isAuthenticated, saveRecipe, unsaveRecipe, setSnapshot, router]);
 
   // Active filters drive the hamburger indicator + context line
   const hasActiveFilters =
